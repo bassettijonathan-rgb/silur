@@ -66,6 +66,9 @@ export interface StratParams {
   persistFlux: number; //  arbitrary units m⁻² yr⁻¹ background
   pyriteSPerC: number; //  kg S per kg organic C
 
+  /** Chance that a rapidly buried anoxic marine deposit is an exceptional-preservation site. */
+  lagerstatteProb: number;
+
   // ---- layering / memory
   mergeBedM: number;
 }
@@ -115,6 +118,8 @@ export const DEFAULT_STRAT: StratParams = {
   irCosmicFlux: 0.2,
   persistFlux: 1e-3,
   pyriteSPerC: 0.36,
+
+  lagerstatteProb: 0.03,
 
   mergeBedM: 10,
 };

@@ -109,3 +109,14 @@ function tryBuild(durationMyr: number, baseDtYr: number, windows: TimeWindow[]):
 export function stepMidAge(plan: TimePlan, i: number): number {
   return 0.5 * (plan.ageBaseMa[i] + plan.ageTopMa[i]);
 }
+
+/** Index of the step whose interval contains `ageMa` (clamped to the plan). Steps run old → young. */
+export function stepAtAge(plan: TimePlan, ageMa: number): number {
+  let lo = 0, hi = plan.n - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (plan.ageTopMa[mid] > ageMa) lo = mid + 1; // step ends (is younger edge) still older than ageMa
+    else hi = mid;
+  }
+  return lo;
+}

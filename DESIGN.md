@@ -519,3 +519,35 @@ already in use (see below).
 - **Known rough edges.** Foreland and intracratonic templates still make carbonate-heavy columns up to ~10 km thick in the
   deepest spot; glacial diamict can dominate a long icehouse at high palaeolatitude. Both are tuning, not structure, and are
   on the M8 balancing list.
+
+### M3 — as built (deviations from the plan above, and why)
+
+**Measured (standard preset):** biosphere 0.2 s, ≈ 21 000 species over 250 Myr with ≈ 500 → 1000 living; M2 timings and memory unchanged.
+
+- **Hazards are dose-based, not `exp(β·v·I)`** (a change from §4.6). Hazard per year = `h_base + Σ_s v_s · I_s / τ_s + thermal`, where `τ_s` is a
+  *lethal time* (years of full-strength exposure to kill 63 % of fully vulnerable species): light 0.5 yr, UV 30 yr, fire 30 yr,
+  harvest 3 kyr, habitat conversion 10 kyr, acidification 400 kyr, anoxia 300 kyr, shelf loss 600 kyr, thermal excess 400 kyr. A year of
+  darkness and a hundred thousand years of acid ocean therefore act on the same variable-length time grid with the same arithmetic.
+  Event modules (M4/M5) must give the `Forcing` intensity *averaged over the step*, so that intensity × step length = dose.
+- **Slow change is not a stressor.** Acidification and shelf loss are measured against a 3-Myr running baseline; species' thermal niches
+  track global temperature with a 5-Myr e-folding time through speciation offsets. Only *rapid* change kills.
+- **Selectivity (tested, odds ratios > 3):** acidification → calcifiers, aragonite worst, land untouched; impact winter → big endotherms and
+  autotrophs, burrowers/detritivores spared (OR < 0.5); hunting + land conversion → big land animals and island endemics; anoxia →
+  benthic deep-shelf life, not plankton; fast warming → thermal specialists.
+- **Standing biosphere** via a 40-Myr benign burn-in; survivors become phylogeny roots (`parent = −1`, `birth = BEFORE_RECORD`). Late
+  clades (land plants, arthropod-likes, big endotherms) originate at fractions of the history drawn per archetype, so large land animals
+  appear mid-history rather than at t = 0.
+- **Clades** are built from 18 archetypes × random perturbation (40 clades) — every world has calcifiers of several mineralogies,
+  soft-bodied life, burrowers, plants, small and large land animals, freshwater forms and island endemics, but *which* survive is chance
+  (a world can lose its aragonite-builders in the burn-in, which is fine and tested around).
+- **Fossils** (`community.ts`, `taphonomy.ts`): `communityAt(bio, stepFrom, stepTo, EnvContext)` and `drawAssemblage(…, individuals, key)` are
+  pure functions of the environment of a layer (facies, depth, O₂, palaeolatitude, sedimentation rate, burial depth, age, Lagerstätte
+  flag) — the observation layer will pass in what the layer's `env` bytes and compaction give. Emergent biases verified: hard ≫ soft
+  (orders of magnitude), marine shelf ≫ land, fast burial helps, aragonite dissolves with depth and age, Lagerstätten rescue soft bodies,
+  Signor–Lipps (last occurrences earlier than true extinction, with spread; some victims never seen).
+- **Strata hooks.** (1) `simulateStrata({ bioturbationIndex })` — marine burrower richness relative to the start scales mixing depth
+  (`0.25 + 0.75·index`): fewer burrowers ⇒ less time-averaging. (2) Rare `LAGERSTATTE` layers (3 % of qualifying cell-steps): marine, bottom
+  water < 10 µmol/kg, sedimentation > 30 m/Myr. (3) Bottom-water oxygen is now depth-resolved on the shelf: an expanded oxygen-minimum zone
+  reaches the outer shelf when the deep ocean is poorly ventilated.
+- **Not yet:** nothing in a no-event world causes a mass extinction (largest single-step loss ≈ 2–4 %) — that is M4's job through
+  `Forcing`; the biosphere does not yet feed back on organic burial.

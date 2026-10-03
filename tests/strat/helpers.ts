@@ -25,6 +25,7 @@ export interface TestWorldOpts {
   preservation?: number;
   /** Final uplift phase, Myr (tests default to none so the record survives to be inspected). */
   exhumeMyr?: number;
+  bioturbationIndex?: (nSteps: number) => Float64Array;
   params?: Parameters<typeof simulateStrata>[0]['params'];
 }
 
@@ -43,7 +44,7 @@ export function makeWorld(o: TestWorldOpts = {}): { world: StratWorld; earth: Ea
   config.durationMyr = durationMyr;
   const world = simulateStrata({
     config, plan, earth, rng, template: o.template ?? 'passive-margin', exhumeMyr: o.exhumeMyr ?? 0,
-    latitude: o.latitude?.(plan.n), sources: o.sources, params: o.params,
+    latitude: o.latitude?.(plan.n), sources: o.sources, params: o.params, bioturbationIndex: o.bioturbationIndex?.(plan.n),
   });
   return { world, earth };
 }

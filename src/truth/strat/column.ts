@@ -215,7 +215,7 @@ export class ColumnStore {
     const mergeable =
       top >= 0 &&
       this.facies[top] === facies &&
-      ((flags | this.flags[top]) & (FLAG.HIATUS | FLAG.DROWN | FLAG.EVENT | FLAG.FINE | FLAG.KEEP | FLAG.ASH | FLAG.TSUNAMI | FLAG.EJECTA)) === 0 &&
+      ((flags | this.flags[top]) & (FLAG.HIATUS | FLAG.DROWN | FLAG.EVENT | FLAG.FINE | FLAG.KEEP | FLAG.ASH | FLAG.TSUNAMI | FLAG.EJECTA | FLAG.LAGERSTATTE)) === 0 &&
       this.solid[top] + solid <= this.mergeBedM;
     if (mergeable) {
       const s0 = this.solid[top];

@@ -16,7 +16,7 @@
  */
 
 import { WorldConfig } from '../../shared/config';
-import { Rng } from '../../shared/rng';
+import { Rng, hashUnit } from '../../shared/rng';
 import { TimePlan } from '../../shared/timeplan';
 import { d18OCalcite } from '../earth/carbonate';
 import { EarthHistory } from '../earth/run';
@@ -50,6 +50,8 @@ export interface StratInput {
   /** Override the palaeolatitude track (degrees, per step). */
   latitude?: Float64Array;
   sources?: StratSource[];
+  /** Burrowing activity per step relative to the start (from the biosphere); scales bioturbation depth. */
+  bioturbationIndex?: Float64Array;
   params?: Partial<StratParams>;
   /** Keep facies-per-cell-per-step (needed by the reveal and by tests). Default true. */
   recordEnv?: boolean;
@@ -346,12 +348,19 @@ export function simulateStrata(input: StratInput): StratWorld {
       if (lastDepStep[i] === s - 1 && !isAllowedTransition(lastFacies[i], fac)) flags |= FLAG.DROWN;
 
       // ---- environment bytes + deposit
-      const bottomO2 = marine ? (d >= 150 ? E.O2deep[s] : Math.max(E.O2deep[s], 150 * (1 - 0.35 * anoxG))) : 250;
+      // Bottom water: well-ventilated on the shallow shelf, the open-ocean deep value below 150 m, and in
+      // between the oxygen-minimum zone eats into the outer shelf when the deep ocean is poorly oxygenated.
+      const wShelf = clamp(1 - d / 150, 0, 1);
+      const bottomO2 = marine ? E.O2deep[s] * (1 - wShelf) + Math.max(E.O2deep[s], 150) * wShelf : 250;
       envBytes[ENV.DEPTH] = encodeDepth(d);
       envBytes[ENV.O2] = encodeO2(bottomO2);
-      envBytes[ENV.SEDRATE] = encodeSedRate((solidTotal / dt) * 1e6);
+      const sedRate = (solidTotal / dt) * 1e6; // m/Myr
+      envBytes[ENV.SEDRATE] = encodeSedRate(sedRate);
       envBytes[ENV.LAT] = encodeLat(lat);
-      const lmix = lmixByFacies[fac] * bioFactor * clamp((bottomO2 - 5) / 50, 0, 1);
+      // Exceptional preservation: rapidly buried sediment under oxygen-free bottom water (rare).
+      if (marine && bottomO2 < 10 && sedRate > 30 && hashUnit(input.rng.key, 'lagerstatte', i, s) < P.lagerstatteProb) flags |= FLAG.LAGERSTATTE;
+      const burrowers = input.bioturbationIndex ? 0.25 + 0.75 * clamp(input.bioturbationIndex[s], 0, 1) : 1;
+      const lmix = lmixByFacies[fac] * bioFactor * burrowers * clamp((bottomO2 - 5) / 50, 0, 1);
 
       col.deposit(s, { tr, facies: fac, flags, env: envBytes, lmix, ageMa: ageMid });
       for (let t = 0; t < NT; t++) tally.delivered[t] += tr[t];
