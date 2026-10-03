@@ -402,7 +402,7 @@ interface ScoreReport { causeBits; ageIntervalScore; missed: …; falsePositives
 | Carbonate chemistry | modern surface ocean | pCO₂ 300–450 µatm, pH 8.0–8.2 |
 | Weathering feedback | step in degassing | pCO₂ returns toward baseline, e-fold 100 kyr–1 Myr |
 | δ18O thermometer | ΔT = 5 K | Δδ18O ≈ −1.15 ‰ ± 0.2 |
-| **Clathrate → PETM-like** | 3000 Pg C, −60 ‰ over 10 kyr | CIE −2…−6 ‰ in < 20 kyr; ΔT +3…+7 K; CCD shoals; recovery e-fold 50–150 kyr |
+| **Clathrate → PETM-like** | 4500 Pg C, −60 ‰ over 10 kyr (ECS 4 K, pCO₂ 500 ppm background) | CIE −2…−6 ‰ in < 20 kyr; ΔT +3…+7 K; CCD shoals > 1 km; CIE e-fold 80–300 kyr (≈ carbon residence time = inventory / burial flux ≈ 200 kyr) |
 | Facies successions | transgression–regression cycle | vertical transitions ⊂ allowed matrix unless across hiatus; 0 forbidden jumps |
 | Unconformities | sea-level fall exposes shelf | age gap recorded; `ErasedInterval` thickness matches removed stack |
 | **Impact layer** | D = 12 km at distal cell | layer < 1 cm, Ir ≥ 1 ppb, spherules > 0, correlated across ≥ 90 % of depositing cells at same step index |
@@ -449,3 +449,29 @@ interface ScoreReport { causeBits; ageIntervalScore; missed: …; falsePositives
 
 Design approved. Implementation proceeds milestone by milestone (M1 → M8), with a commit at the end of each.
 Open questions in §12.6 were accepted at their stated defaults.
+
+### M1 — as built (deviations from the plan above, and why)
+
+- **Integrator.** Adaptive Rosenbrock ROS2 (L-stable, 2nd order) with a finite-difference Jacobian and dense LU, not
+  Dormand–Prince RK45: the atmosphere/surface-ocean modes (~10 yr) are stiff next to the 100 kyr plan step, and an
+  explicit method would need ~10⁴ substeps per step. 250 Myr at 100 kyr steps runs in ≈ 1 s.
+- **State.** 15 variables (atmospheric C; surface & deep DIC and alkalinity; PO₄; deep O₂; atmospheric O₂; crustal
+  organic C; δ¹³C of atmosphere, surface and deep DIC; surface & deep temperature; ice volume). Isotopes are carried as
+  δ values per pool (`M dδ/dt = Σ J(δ_in − δ)`), not as moments — same physics, better scaled for the solver.
+- **Baseline calibration** (`calibrate.ts`) builds an exact steady state: surface chemistry from (pCO₂, Ω) in closed
+  form, shelf-carbonate coefficient from the alkalinity balance, then spin-up with the slowest reservoirs frozen to
+  settle the deep ocean / P / O₂ / isotopes. You change a number in `planet.ts` and the baseline re-closes itself.
+- **Added: terrestrial organic burial** suppressed by wildfire in an O₂-rich atmosphere. Without it atmospheric O₂ drifted
+  to 35–50 % over 250 Myr; with it the sampled planets stay at ≈ 19–23 %.
+- **Added: saturating productivity** (`2P/(1+P)`; nitrogen/light limitation) and baseline export scaled with ocean
+  mixing so a planet's *baseline* deep-ocean oxygenation does not depend on its sampled overturn rate. Both removed
+  runaway euxinia in a third of sampled planets.
+- **Slow drivers** (degassing, uplift, polar land, tectonic eustasy) are Ornstein–Uhlenbeck processes with 25–80 Myr
+  correlation times, so each world has only ~3–4 independent "climate eras" — intended (greenhouse / icehouse epochs).
+- **PETM recovery** is slower than I first wrote in §10 (e-fold ≈ 200 kyr, not 50–150): it follows directly from the
+  carbon inventory (~5×10⁴ Pg) divided by the total burial flux (~0.25 Pg C yr⁻¹). Real PETM CIE recovery is ~150–200 kyr.
+  A 3000 Pg C release warms only ~2.5 K here (airborne fraction ≈ 20 % after carbonate compensation); a PETM-sized +4–5 K
+  needs ~4500–5000 Pg C or a higher ECS. Test updated accordingly.
+- **Dev tooling.** `tools/depcheck.ts` (import-graph checker, also a CLI), `tools/run-earth.ts` (sparkline table),
+  `dev/earth.html` (Canvas debug page; deliberately outside `src/`, its own Vite entry, proven by the bundle test to
+  be the *only* place truth is bundled).

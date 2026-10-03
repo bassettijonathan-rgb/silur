@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Silur dev — Earth system</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; margin: 16px; background: #14161a; color: #dde; }
+      canvas { display: block; margin: 8px 0; background: #1c1f26; border: 1px solid #333; }
+      label { margin-right: 12px; }
+      h1 { font-size: 16px; }
+      .note { color: #f9a; }
+    </style>
+  </head>
+  <body>
+    <h1>Earth-system debug page <span class="note">(developer tool — uses the truth layer; not part of the game)</span></h1>
+    <label>seed <input id="seed" value="alpha" size="10" /></label>
+    <label>Myr <input id="dur" value="250" size="4" /></label>
+    <label>step kyr <input id="dt" value="100" size="4" /></label>
+    <button id="go">run</button>
+    <span id="info"></span>
+    <div id="plots"></div>
+    <script type="module" src="./earth.ts"></script>
+  </body>
+</html>
