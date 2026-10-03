@@ -104,6 +104,7 @@ export class App {
 
     root.append(
       el('div', { class: 'top' }, el('b', {}, 'Silur'), ' seed ', this.seed, this.preset, this.level, this.go, this.saveBtn, this.loadBtn, this.exportBtn, this.importInput, this.budget, this.bar, this.stage),
+      this.help(),
       el('div', { class: 'main' },
         el('div', {}, el('div', {}, 'map layer ', this.layerSel), this.map, this.cellInfo,
           el('div', {}, 'core depth (m) ', this.depth, this.drillBtn, ' ', this.surveyBtn), this.log),
@@ -139,6 +140,20 @@ export class App {
     this.normDepth.addEventListener('change', () => this.render());
     this.setEnabled(false);
     this.render();
+  }
+
+  private help(): HTMLElement {
+    const d = el('details', { class: 'help' }, el('summary', {}, 'How to play'));
+    d.append(
+      el('p', {}, 'Somewhere in this planet\'s rock record there may be the trace of an industrial civilization — or only natural catastrophes that look like one. You never see the truth, only what you pay for.'),
+      el('ol', {},
+        el('li', {}, 'Click the map to pick a site. Drill a core (cheap per metre — old rock lies deep) or, on land, survey an outcrop (cheap, but weathered and patchy).'),
+        el('li', {}, 'In the Core tab, buy assays along the core: δ¹³C shows carbon-cycle excursions, Hg volcanism, Ir impacts, charcoal and persistent organics fire. Click the log to pick a depth, then date an ash bed (U–Pb) or collect fossils.'),
+        el('li', {}, 'Correlate cores with tie lines; the Age model tab turns dates and ties into ages and sedimentation rates (a flat segment is a gap or a bad date).'),
+        el('li', {}, 'Keep a notebook. When you are ready, Submit: a probability that a civilization existed, plus the events you found with 80 % age intervals and honest probabilities. Scoring is proper — honest confidence earns the most — and the Reveal shows everything, including what erosion destroyed and what an ideal observer would have said.'),
+      ),
+    );
+    return d;
   }
 
   private setEnabled(on: boolean): void {

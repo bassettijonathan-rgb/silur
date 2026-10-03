@@ -5,7 +5,9 @@ reconstruct it from noisy, biased evidence (strata, fossils, geochemical proxies
 worlds hosted a long-extinct industrial civilization (after Schmidt & Frank 2018's *Silurian hypothesis*); natural
 processes can mimic its signatures, and you are never told which kind of world you are in.
 
-See **[DESIGN.md](DESIGN.md)** for the model, architecture and milestone plan.
+See **[DESIGN.md](DESIGN.md)** for the model, architecture and milestone plan, and the "as built" notes (§13) for what each milestone actually measured.
+
+**Playing:** `npm run dev`, pick a difficulty, generate a world (the dev preset takes ≈ 3 s, the standard 64×64 / 250 Myr world ≈ 35–45 s), then drill, survey, assay, date, correlate and finally submit. The hidden history exists only inside a Web Worker; the page never imports it (three independent tests enforce that).
 
 ## Status
 
@@ -18,7 +20,7 @@ See **[DESIGN.md](DESIGN.md)** for the model, architecture and milestone plan.
 | M5 Hidden civilization, mimicry, ideal-observer solvability gate | done |
 | M6 Full investigation UI: outcrops, dating, fossils, correlation, age models, notebook, save/load | done |
 | M7 Submission, proper scoring, preservation audit, reveal, calibration history | done |
-| M8 Balancing with bot players, difficulty presets, polish | next |
+| M8 Bot-player balancing and score ladder, difficulty presets, polish | done |
 
 ## Commands
 

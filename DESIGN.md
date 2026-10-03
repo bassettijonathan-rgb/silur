@@ -447,7 +447,7 @@ interface ScoreReport { causeBits; ageIntervalScore; missed: …; falsePositives
 
 ## 13. Status
 
-Design approved. Implementation proceeds milestone by milestone (M1 → M8), with a commit at the end of each.
+Design approved. All eight milestones (M1 → M8) are implemented, one commit each; the "as built" sections below record what was measured and where the build departed from the plan.
 Open questions in §12.6 were accepted at their stated defaults.
 
 ### M1 — as built (deviations from the plan above, and why)
@@ -689,3 +689,41 @@ reloads the page and restores the identical budget, cores and notebook.
   timeline with the curves, event/audit table, erased-rock histogram, reliability diagram for this game and for the last 50 games in `localStorage`).
 - **Known limits:** (1) the miss penalty dominates a naive answer's score (a 100-Myr dev world has ≈ 20 scorable events); M8 retunes `MISS_BITS`; (2) the
   ideal observer only assesses forced events, so the cause-bit comparison in the reveal is limited to the headline; (3) `significance` is hand-set.
+
+### M8 — as built (deviations from the plan above, and why)
+
+**Measured** (`tools/run-bots.ts 40 dev <level>`, 24×24 cells, 80 Myr, 40 worlds each; "gain" = total score minus what an empty answer would have scored in the same world):
+
+| level | do-nothing | random | greedy | informed | ideal (upper bound) | ideal observer clear (right by ≥ 0.8) | budget |
+|---|---|---|---|---|---|---|---|
+| easy   | 0.1 | −0.4 ± 0.2 | 0.6 ± 0.2 | 0.9 ± 0.0 | 11.5 ± 0.8 | 85 % | 800 |
+| normal | 0.1 | −0.5 ± 0.2 | 0.3 ± 0.2 | 0.9 ± 0.1 | 13.9 ± 0.9 | 83 % | 500 |
+| hard   | 0.1 | −0.2 ± 0.2 | 0.2 ± 0.2 | 0.9 ± 0.1 | 18.4 ± 1.0 | 83 % | 300 |
+
+- **The ladder holds** (`tests/bots/ladder.test.ts` on 8 fixed worlds): random < do-nothing < informed < ideal, and greedy < ideal. Greedy's gain falls monotonically
+  with difficulty (0.6 → 0.3 → 0.2); the ideal bot's absolute score rises because hard worlds contain more detectable events (12 → 15 → 20).
+- **Bots** (`tools/bots.ts`) play through the ordinary observation service. *Greedy* is a competent field geologist: probe three marine-looking sites with 150-m
+  cores, re-drill the most carbonate-rich one as deep as 35 % of the budget allows, run a coarse δ13C (or organic δ13C) log with 40 % of the budget, follow up
+  outlying samples with Hg/TOC/Ir (and persistent organics at the largest), date up to three ash beds near the anomalies, fit an age model, classify by rules of thumb.
+  *Informed* = greedy + the ideal observer's headline probability. *Ideal* = every detectable event, aged within dating error, plus the ideal headline.
+- **Budget raised 100 → 500.** At 100 the greedy bot could afford a dozen δ13C samples over a 1.5-km core and found nothing at all; even at 1000 it found only 0.3 events
+  per world, so the limit is mostly reading a sparse record (old events lie deep and bolides need an Ir assay at the right horizon). Presets: easy 800 / normal 500 / hard 300,
+  together with preservation (0.8 / 0.6 / 0.4), noise (0.7 / 1 / 1.4), mimic frequency (0.3 / 0.5 / 0.8) and event density (0.8 / 1 / 1.3).
+- **Scoring changes found by the bots:** (1) an episode claim ("hyperthermal") may stand for the forced event that caused it (clathrate, LIP…), judged on the cause it
+  names — bots were seeing a methane release and being charged a false alarm *and* a miss; (2) misses are charged per cluster of causally linked events (a LIP and
+  the OAEs and extinctions it triggered count once); (3) event-list lines count ¼ as much as the headline in the total, because the omniscient bot otherwise
+  scored ~50 bits against a headline range of ±6.6.
+- **Fossils:** 800 individuals per unit effort (was 3000) and coarser lumping: a first sample returns a few dozen morphotypes rather than 60+.
+- **Remote sensing** errors are now spatially clumped (3×3-cell patches, 10 % of patches, 70 % wrong inside) plus 6 % salt-and-pepper, instead of 15 % independent.
+- **UI:** difficulty selector, a "How to play" panel, a stretch-to-full-height toggle in the correlation tab, and the progress label says "redraw n" when the solvability gate
+  redraws the world (progress messages carry the attempt number).
+- **Performance** (standard 64×64, 250 Myr, measured with `--cpu-prof`): generation alone ≈ 24 s (strata simulation 80 %: the per-cell loop 34 % self time,
+  erosion 14 %, layer pushes/deposits 12 %, thickness bookkeeping 5 %, flow routing 7 %, Earth system < 5 %, biosphere < 2 %); with the gate ≈ 35–45 s
+  (mean 1.4 draws). Micro-optimising the strata loop would change floating-point order and therefore every world hash, so it was left alone; the dev preset (2–3 s) is the
+  fast option and the UI says what stage is running.
+- **Known limits / honest caveats:** (1) the greedy bot's headline accuracy is near the prior (≈ 75 % "no civilization"): reading the headline needs the integrative
+  reasoning the ideal observer does, and no scripted bot below *informed* does it — human playtests are the next measurement; (2) the gate keeps the ideal observer ≥ 0.6
+  right on every accepted world and ≥ 0.8 right on ≈ 84 %, independent of difficulty, so difficulty acts on *how much a bounded player can recover*, not on whether the
+  puzzle is answerable in principle; (3) ≈ 20–24 % of standard-map cells are bare basement (cratonic exhumation) — geologically fair but dull to drill, the free map
+  shows it as "crystalline basement"; (4) the headless-Chromium smoke tests (map → drill → survey → assay → date → fossils → tie → hypothesis → save/reload → submit → reveal)
+  were run by hand, not in CI, because Playwright is not a project dependency.
