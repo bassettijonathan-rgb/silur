@@ -40,7 +40,8 @@ export function computeStressors(plan: TimePlan, earth: EarthHistory, baselineTa
     // acidification: fractional drop in aragonite saturation below its running baseline (25 % drop = full strength)
     I[S.acid][s] = clamp((4 * (omRun - E.omegaArag[s])) / omRun, 0, 1.5) + f.acidPulse * 50;
     I[S.anoxia][s] = clamp((E.anoxic[s] - 0.05) / 0.5, 0, 1);
-    I[S.light][s] = clamp(f.lightReduction + 0.3 * f.aerosolOpticalDepth, 0, 1);
+    // only acute darkness (dust/soot) counts; a thin chronic volcanic aerosol veil dims the planet but is not lethal
+    I[S.light][s] = clamp(f.lightReduction, 0, 1);
     I[S.uv][s] = clamp(f.ozoneLoss, 0, 1);
     I[S.fire][s] = clamp(0.1 * f.fireIgnition + 0.05 * f.soot, 0, 1);
     // loss of shelf habitat area relative to the running mean (50 % loss = full strength)

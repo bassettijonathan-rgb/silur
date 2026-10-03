@@ -34,9 +34,17 @@ import { DEFAULT_STRAT, StratParams } from './params';
 import { DENSITY, NT, T, massOf } from './tracers';
 
 /** Something that adds extra material to a cell's deposit this step (impact ejecta, ash falls, ...). */
+export interface StratCellCtx {
+  /** Water depth, m (≤ 0 on land). */
+  waterDepth: number;
+  /** Cell centre, km from the map centre. */
+  x: number;
+  y: number;
+}
+
 export interface StratSource {
   /** Add to `tr`; return extra FLAG bits for the layer. */
-  add(step: number, cell: number, dtYr: number, ageMa: number, tr: Float64Array): number;
+  add(step: number, cell: number, dtYr: number, ageMa: number, tr: Float64Array, ctx: StratCellCtx): number;
 }
 
 export interface StratInput {
@@ -142,6 +150,7 @@ export function simulateStrata(input: StratInput): StratWorld {
   const einfo: ErodeInfo = { removedSolid: 0, ageOldMa: 0, ageYoungMa: 0 };
   const tr = new Float64Array(NT);
   const envBytes = new Uint8Array(ENV_FIELDS);
+  const cellCtx: StratCellCtx = { waterDepth: 0, x: 0, y: 0 };
   const lmixByFacies = FACIES.map((n) => P.lmix[n] ?? 0);
 
   const updateSurface = () => {
@@ -340,7 +349,10 @@ export function simulateStrata(input: StratInput): StratWorld {
       tally.external[T.clastic] += extraClay;
       for (const src of sources) {
         const before = tr.slice();
-        flags |= src.add(s, i, dt, ageMid, tr);
+        cellCtx.waterDepth = d;
+        cellCtx.x = ((i % nx) + 0.5 - nx / 2) * cellKm;
+        cellCtx.y = (Math.floor(i / nx) + 0.5 - ny / 2) * cellKm;
+        flags |= src.add(s, i, dt, ageMid, tr, cellCtx);
         for (let t = 0; t < NT; t++) tally.external[t] += tr[t] - before[t];
       }
 

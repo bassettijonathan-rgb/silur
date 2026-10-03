@@ -95,7 +95,7 @@ describe('diversity dynamics', () => {
   it('recovers slowly from a mass extinction (> 2 Myr) and then refills', () => {
     const big = makeBio({
       seed: 'recover', durationMyr: 120,
-      tweak: (e) => pulse(e, 200, { lightReduction: 0.9 / e.plan.dtYr[200] * 3, ozoneLoss: 0.9 / e.plan.dtYr[200] * 40 }),
+      tweak: (e) => pulse(e, 200, { lightReduction: (0.9 / e.plan.dtYr[200]) * 1.2 }), // ~1 yr of near-darkness
     });
     const b = big.bio, s0 = 200;
     const before = b.living[s0 - 1];

@@ -55,7 +55,7 @@ export const DEFAULT_BIO: BioParams = {
     acid: 4e5,
     anoxia: 3e5,
     light: 0.5,
-    uv: 30,
+    uv: 3000,
     fire: 30,
     shelf: 6e5,
     harvest: 3e3,

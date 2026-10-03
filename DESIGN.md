@@ -551,3 +551,42 @@ already in use (see below).
   reaches the outer shelf when the deep ocean is poorly ventilated.
 - **Not yet:** nothing in a no-event world causes a mass extinction (largest single-step loss ≈ 2–4 %) — that is M4's job through
   `Forcing`; the biosphere does not yet feed back on organic burial.
+
+### M4 — as built (deviations from the plan above, and why)
+
+**Measured (standard preset, seed `alpha`):** whole world in ≈ 23 s (Earth 1.2 s, biosphere 0.3 s, strata ≈ 22 s, 3 450 steps incl. event windows),
+≈ 1.9 M layers, 21 000 species; in a real browser the worker reports smooth progress and finishes in ≈ 22 s. 158 tests.
+
+- **Events** (`src/truth/events/`): LIP, bolide, clathrate, supernova (forced) and ash eruptions (background), drawn as Poisson processes
+  (per Myr × `eventDensity`: LIP 0.012, global bolide 0.012, regional impacts 0.03, clathrate 0.012, supernova 0.004, ash 0.4 + 2 per LIP-Myr).
+  Rates go through `Forcing` as **step averages** (`avgOverStep`: intensity × step = dose); instantaneous deposits (ejecta clay + Ir/spherules/shocked
+  quartz/charcoal, tsunamites, ash beds, ⁶⁰Fe) go through one `EventSource` (a `StratSource`, now given `{waterDepth, x, y}`).
+- **Calibration to the real record:** global Ir fluence 70·D³ ng m⁻² (≈ 8 ppb in a 3-mm distal clay for D = 10 km), proximal ejecta ∝ r⁻³, ⁶⁰Fe with
+  2.6-Myr half-life (undetectable beyond ~25 Myr), clathrate 2–5·10³ Pg C at −60 ‰, **LIPs 1.5·10⁴–1.2·10⁵ Pg C in sharp pulses plus a phosphorus
+  pulse** (an early draw of 10³–10⁴ Pg gave a 1 K blip and no OAEs; the larger, pulsed LIPs now produce hyperthermals, OAEs and extinctions).
+  A 12-km impact kills ≈ 40–70 % of species, with large endotherms and autotrophs hit and burrowers spared.
+- **Two M3 constants changed:** UV lethal time 30 yr → 3000 yr (a 30 % ozone loss for kyr was 100 % lethal), and only acute darkness (`lightReduction`)
+  drives the light stressor — a chronic volcanic aerosol veil dims the planet but is not lethal (LIP steps of 10 kyr × 0.01 intensity wiped out all life).
+- **Segmenter + catalog** (`segmenter.ts`, `catalog.ts`): OAE (anoxic > 0.25), glaciation (ice > 0.3), hyperthermal (> 2.5 K over a 3-Myr baseline) and
+  extinction pulses (clustered excess deaths, > 4σ over background and ≥ 6 % of species). Causal links by "effect starts after cause began, no later
+  than a lag after it ended" (1.5 Myr; 0.5 Myr for extinctions); effects inherit the cause. Ash eruptions are kept separately (`World.ashes`).
+- **World** (`truth/world.ts`): `generateWorld(config, progress, options)`; `options` (explicit schedule, template, exhumation, latitude) exists for tests
+  and scenario worlds. `worldHash` fingerprints a world.
+- **Observation** (`src/observation/`): `drill` (cost 5 + 0.02/m, ×3 offshore, ≤ 1500 m; per-core depth stretch ≈ 0.4 %, ≈ 8 % core loss that is *cut out*
+  of the bed list so lost intervals leak nothing) and `assay` (per-sample cost; 6-cm samples). Rock names come from composition (limestone … tuff,
+  diamictite from texture); notes are what a geologist sees ("volcanic ash bed", "thin clay-rich layer", "chaotic graded sand bed", "sharp contact").
+  Instruments: Gaussian/relative noise, detection limits, Poisson counting, δ¹⁸O diagenesis (≈ −0.5 ‰ per km burial, drift with age, per-sample overprint),
+  ⁶⁰Fe decay, 3 % contamination for persistent organics. Free map: noisy topography, remote-sensed surface rock (15 % wrong), exposure.
+  Noise is stateless-hash based — verified order-independent; repeating an action is free.
+- **Bioturbation blurs event beds into older sediment too** (a 1-kyr impact step mixes with the ~8 cm of older mud below it), so the ejecta layer's mean
+  age is ~50–100 kyr older than the impact and Ir peaks are a few ppb at best. This is realistic, and tests allow for it.
+- **Worker/client:** `WorkerHost` (pure class) + 10-line `worker.ts`; `ObservationClient` over a `Transport`; tests wire them in-process with structured
+  cloning of every message. `submit` is refused (`sealed`) until M7. The build emits the worker as a separate asset.
+- **Architecture tests strengthened:** the bundle test now proves the main-thread chunks contain no truth/observation *modules or code strings* and that the
+  worker asset does contain them (positive control).
+- **UI** (`src/ui`, `src/game`): map (topography / remote-sensed rock / exposure), drill, core log with lost-core shading and note ticks, assay curves with
+  1σ bars, budget, progress bar. Plain DOM + Canvas2D.
+- **Known rough edges / M8 list:** (1) after the final exhumation phase ~30 % of the map is bare basement and several cells carry < 20 m of rock — the
+  sedimentary cover needs to be thicker and more continuous for good play; (2) LIPs and big impacts are common enough that some worlds have 4–5 of them;
+  (3) the 15 % remote-sensing error looks like salt-and-pepper noise; spatially correlated error would be kinder; (4) no OAE appears unless a LIP/clathrate
+  drives one (intended, but rare in short runs).
