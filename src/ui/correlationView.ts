@@ -54,7 +54,7 @@ export function drawCorrelation(canvas: HTMLCanvasElement, st: CorrelationState)
   st.cores.forEach((c) => {
     const x = L.x.get(c.coreId)!;
     g.fillStyle = '#9ab';
-    g.fillText(`${c.cell}${c.source === 'outcrop' ? ' ▫' : ''}`, x, 12);
+    g.fillText(`${c.cell}${c.source === 'outcrop' ? ' ▫' : ''}`, x, 19);
     // depth ticks
     for (let z = 0; z <= c.lengthM; z += tick(c.lengthM)) { g.fillText(`${z}`, x - 24, yOf(z)); }
     for (const b of c.beds) {
@@ -87,7 +87,7 @@ export function drawCorrelation(canvas: HTMLCanvasElement, st: CorrelationState)
     if (x !== undefined) { g.strokeStyle = '#ffec4d'; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(x - 4, yOf(st.pending.depthM)); g.lineTo(x + COL_W, yOf(st.pending.depthM)); g.stroke(); g.setLineDash([]); }
   }
   g.fillStyle = '#9ab'; g.textBaseline = 'alphabetic';
-  g.fillText(st.proxy ? `curve: ${PROXIES[st.proxy].label}` : 'curve: none', canvas.width - 190, 12);
+  g.fillText(st.proxy ? `curve: ${PROXIES[st.proxy].label}` : 'curve: none', PAD, 7);
 }
 
 /** Which core and depth were clicked, if any. */
