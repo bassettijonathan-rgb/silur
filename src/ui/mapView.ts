@@ -8,7 +8,7 @@ function hex(c: string): [number, number, number] {
   return [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
 }
 
-export function drawMap(canvas: HTMLCanvasElement, info: PublicInfo, layer: MapLayer, selected: number, cored: Set<number>): void {
+export function drawMap(canvas: HTMLCanvasElement, info: PublicInfo, layer: MapLayer, selected: number, cored: Map<number, 'core' | 'outcrop'>): void {
   const g = canvas.getContext('2d')!;
   const { nx, ny } = info;
   const cw = canvas.width / nx, ch = canvas.height / ny;
@@ -32,9 +32,11 @@ export function drawMap(canvas: HTMLCanvasElement, info: PublicInfo, layer: MapL
       if (layer === 'rock' && e < 0) { g.fillStyle = 'rgba(20,60,160,0.45)'; g.fillRect(x * cw, y * ch, cw + 0.5, ch + 0.5); }
     }
   }
-  for (const c of cored) {
-    g.fillStyle = '#fff'; g.beginPath();
-    g.arc(((c % nx) + 0.5) * cw, (Math.floor(c / nx) + 0.5) * ch, Math.max(2, cw * 0.18), 0, 7); g.fill();
+  for (const [c, kind] of cored) {
+    const cx = ((c % nx) + 0.5) * cw, cy = (Math.floor(c / nx) + 0.5) * ch, r = Math.max(2, cw * 0.18);
+    g.fillStyle = kind === 'core' ? '#fff' : '#ffb347'; g.beginPath();
+    if (kind === 'core') g.arc(cx, cy, r, 0, 7); else g.rect(cx - r, cy - r, 2 * r, 2 * r);
+    g.fill();
   }
   if (selected >= 0) {
     g.strokeStyle = '#ffec4d'; g.lineWidth = 2;

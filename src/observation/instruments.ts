@@ -21,6 +21,8 @@ export interface SampleContext {
   /** Mean age of the sampled rock, Ma, and its present burial depth, m (used for physics, never reported). */
   ageMa: number;
   burialM: number;
+  /** Surface outcrop: organic matter and pyrite are partly oxidised, isotopes noisier. */
+  weathered?: boolean;
 }
 
 export interface Reading {
@@ -35,7 +37,7 @@ export function measureProxy(proxy: ProxyId, acc: ArrayLike<number>, c: SampleCo
   const mass = massOf(acc); // kg per m² of sampled rock
   if (mass <= 0) return { value: null, sigma: 0, note: 'below detection' };
   const z = (k: string) => hashNormal(c.seed, 'assay', proxy, c.cell, c.depthKey, k);
-  const ns = c.noiseScale;
+  const ns = c.noiseScale * (c.weathered ? 1.5 : 1);
   const carb = acc[T.caco3];
   const org = acc[T.orgC];
   const carbFrac = (carb * 2710) / mass;
@@ -63,9 +65,9 @@ export function measureProxy(proxy: ProxyId, acc: ArrayLike<number>, c: SampleCo
       const s = 0.3 * ns;
       return { value: acc[T.d15N] / org + s * z('n'), sigma: s };
     }
-    case 'toc': return rel(tocFrac * 100, 0.03 * ns, z('n'), 0.005);
+    case 'toc': return rel(tocFrac * 100 * (c.weathered ? 0.7 : 1), 0.03 * ns, z('n'), 0.005);
     case 'caco3': { const s = 1 * ns; return { value: Math.max(0, carbFrac * 100 + s * z('n')), sigma: s }; }
-    case 'sulfur': return rel(((acc[T.pyriteS]) / mass) * 100, 0.03 * ns, z('n'), 0.005);
+    case 'sulfur': return rel(((acc[T.pyriteS]) / mass) * 100 * (c.weathered ? 0.4 : 1), 0.03 * ns, z('n'), 0.005);
     case 'hg': return rel(acc[T.Hg] / mass, 0.05 * ns, z('n'), 1); //                       µg/kg = ppb
     case 'ir': return rel(acc[T.Ir] / (mass * 1000), 0.1 * ns, z('n'), 0.02); //             ng/g = ppb
     case 'charcoal': return rel((acc[T.charcoal] * 1000) / mass, 0.08 * ns, z('n'), 0.5); //   mg/kg

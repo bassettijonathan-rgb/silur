@@ -39,7 +39,7 @@ describe('free map information', () => {
     expect(info.elevationM.length).toBe(N);
     expect(info.surfaceClass.length).toBe(N);
     expect(info.exposure.length).toBe(N);
-    expect(Object.keys(info).sort()).toEqual(['budget', 'cellKm', 'drillCost', 'elevationM', 'exposure', 'maxCoreM', 'nx', 'ny', 'proxies', 'surfaceClass']);
+    expect(Object.keys(info).sort()).toEqual(['budget', 'cellKm', 'costs', 'drillCost', 'elevationM', 'exposure', 'maxCoreM', 'nx', 'ny', 'proxies', 'surfaceClass']);
     for (const v of info.surfaceClass) expect(v).toBeLessThan(LITHOLOGIES.length);
     for (const v of info.exposure) { expect(v).toBeGreaterThanOrEqual(0); expect(v).toBeLessThanOrEqual(100); }
   });

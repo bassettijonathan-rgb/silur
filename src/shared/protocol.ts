@@ -20,12 +20,20 @@ export interface PublicInfo {
   budget: number;
   maxCoreM: number;
   drillCost: { base: number; perMeter: number; offshoreFactor: number };
+  /** Costs of the other field and lab actions. */
+  costs: { survey: { base: number; perMeter: number }; date: number; fossilsPerEffort: number };
   proxies: ProxyInfo[];
 }
 
 export type Action =
   | { kind: 'drill'; cell: number; depthM: number }
-  | { kind: 'assay'; coreId: string; proxy: ProxyId; depthsM: number[] };
+  /** Walk and measure the exposed section at a (land) cell. Gives a section just like a core, id `out-<cell>`. */
+  | { kind: 'survey'; cell: number }
+  | { kind: 'assay'; coreId: string; proxy: ProxyId; depthsM: number[] }
+  /** Separate zircons from an ash-bearing sample and date them by U–Pb. */
+  | { kind: 'date'; coreId: string; depthM: number }
+  /** Collect and identify fossils from a sample; effort 1–4 scales the amount of rock processed (and the cost). */
+  | { kind: 'fossils'; coreId: string; depthM: number; effort: number };
 
 export interface Bed {
   topM: number;
@@ -42,6 +50,8 @@ export interface Bed {
 
 export interface CoreResult {
   kind: 'core';
+  /** Drilled core, or a measured outcrop section. */
+  source: 'core' | 'outcrop';
   coreId: string;
   cell: number;
   requestedM: number;
@@ -72,7 +82,40 @@ export interface AssayResult {
   budgetLeft: number;
 }
 
-export type Measurement = CoreResult | AssayResult;
+export interface DateResult {
+  kind: 'date';
+  coreId: string;
+  depthM: number;
+  /** U–Pb age in Ma before present with 1σ analytical uncertainty; null if there was nothing to date. */
+  ageMa: number | null;
+  sigmaMa: number;
+  note?: 'no datable ash' | 'lost core' | 'out of range';
+  cost: number;
+  budgetLeft: number;
+}
+
+export interface Morphotype {
+  /** Name the palaeontologist gives this form (stable across samples). */
+  name: string;
+  count: number;
+  /** What the fossil is made of / how big / how it lived — all visible in the specimen. */
+  material: string;
+  size: string;
+  habit: string;
+}
+
+export interface FossilResult {
+  kind: 'fossils';
+  coreId: string;
+  depthM: number;
+  effort: number;
+  found: Morphotype[];
+  note?: 'lost core' | 'out of range';
+  cost: number;
+  budgetLeft: number;
+}
+
+export type Measurement = CoreResult | AssayResult | DateResult | FossilResult;
 
 export type ClientMessage =
   | { kind: 'generate'; config: WorldConfig }

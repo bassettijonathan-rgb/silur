@@ -3,18 +3,30 @@
  * Right: one curve per assayed proxy against the same depth axis, with 1σ bars.
  */
 import { LITHOLOGIES, LITH_COLORS } from '../shared/lithology';
-import { AssaySample, CoreResult } from '../shared/protocol';
+import { AssaySample, CoreResult, DateResult, FossilResult } from '../shared/protocol';
 import { PROXIES, ProxyId } from '../shared/proxies';
 
-const CURVE_COLORS = ['#e8a33d', '#8bd17c', '#e5584f', '#7aa8ff', '#c58be5', '#7ce0d1'];
+export const CURVE_COLORS = ['#e8a33d', '#8bd17c', '#e5584f', '#7aa8ff', '#c58be5', '#7ce0d1'];
+
+/** Sample markers drawn beside the log. */
+export interface CoreMarks { dates: DateResult[]; fossils: FossilResult[]; pickedM?: number | null }
+
+const TOP = 22, BOT_PAD = 6;
+/** Depth (m) under a mouse event on the core canvas. */
+export function coreDepthAt(canvas: HTMLCanvasElement, ev: MouseEvent, z0: number, z1: number): number {
+  const r = canvas.getBoundingClientRect();
+  const py = ((ev.clientY - r.top) / r.height) * canvas.height;
+  return z0 + ((py - TOP) / (canvas.height - BOT_PAD - TOP)) * (z1 - z0);
+}
 
 export function drawCore(
   canvas: HTMLCanvasElement, core: CoreResult, assays: Map<ProxyId, AssaySample[]> | undefined, z0: number, z1: number,
+  marks: CoreMarks = { dates: [], fossils: [] },
 ): void {
   const g = canvas.getContext('2d')!;
   const W = canvas.width, H = canvas.height;
   g.clearRect(0, 0, W, H);
-  const top = 22, bot = H - 6, axisW = 46, logW = 96;
+  const top = TOP, bot = H - BOT_PAD, axisW = 46, logW = 96, markW = 84;
   const y = (z: number) => top + ((z - z0) / (z1 - z0)) * (bot - top);
   g.font = '11px system-ui'; g.textBaseline = 'middle';
 
@@ -46,9 +58,32 @@ export function drawCore(
   }
   g.strokeStyle = '#667'; g.strokeRect(axisW, top, logW, bot - top);
 
+  // sample markers: radiometric dates (diamonds) and fossil samples (triangles)
+  const mx = axisW + logW + 10;
+  g.font = '10px system-ui';
+  for (const d of marks.dates) {
+    if (d.depthM < z0 || d.depthM > z1) continue;
+    const py = y(d.depthM);
+    g.fillStyle = d.ageMa === null ? '#778' : '#ffd24d';
+    g.beginPath(); g.moveTo(mx, py - 4); g.lineTo(mx + 4, py); g.lineTo(mx, py + 4); g.lineTo(mx - 4, py); g.closePath(); g.fill();
+    g.fillText(d.ageMa === null ? 'no ash' : `${d.ageMa.toFixed(2)}±${d.sigmaMa.toFixed(2)}`, mx + 7, py);
+  }
+  for (const f of marks.fossils) {
+    if (f.depthM < z0 || f.depthM > z1) continue;
+    const py = y(f.depthM);
+    g.fillStyle = '#7fe08c';
+    g.beginPath(); g.moveTo(mx + 56, py + 4); g.lineTo(mx + 60, py - 4); g.lineTo(mx + 64, py + 4); g.closePath(); g.fill();
+    g.fillText(`${f.found.length}`, mx + 67, py);
+  }
+  if (marks.pickedM != null && marks.pickedM >= z0 && marks.pickedM <= z1) {
+    g.strokeStyle = '#ffec4d'; g.setLineDash([4, 3]);
+    g.beginPath(); g.moveTo(axisW, y(marks.pickedM)); g.lineTo(W - 4, y(marks.pickedM)); g.stroke(); g.setLineDash([]);
+  }
+  g.font = '11px system-ui';
+
   // proxy curves
   const list = assays ? [...assays.entries()] : [];
-  const left = axisW + logW + 14;
+  const left = axisW + logW + 14 + markW;
   const cw = list.length ? Math.max(70, (W - left - 6) / list.length - 8) : 0;
   list.forEach(([proxy, samples], k) => {
     const info = PROXIES[proxy];

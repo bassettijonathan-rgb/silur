@@ -16,8 +16,8 @@ See **[DESIGN.md](DESIGN.md)** for the model, architecture and milestone plan.
 | M3 Biosphere: clades, extinction selectivity, taphonomy | done |
 | M4 Natural catastrophes + playable vertical slice (map → drill → core → assays) | done |
 | M5 Hidden civilization, mimicry, ideal-observer solvability gate | done |
-| M6 Full investigation UI: outcrops, dating, fossils, correlation, notebook | next |
-| M7–M8 | planned (see DESIGN.md §11) |
+| M6 Full investigation UI: outcrops, dating, fossils, correlation, age models, notebook, save/load | done |
+| M7 Submission, scoring, reveal · M8 balancing and polish | planned |
 
 ## Commands
 

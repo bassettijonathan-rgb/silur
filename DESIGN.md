@@ -627,3 +627,33 @@ and 14 of 20 dev worlds, mean 1.45 draws); the library holds 200 mini-world samp
 - **Known limits:** (1) the ideal observer reads rock features through the truth tracers (noise-free) — it bounds a perfect player, not a real one; (2) its power stems from
   14 features; if a human ever beats it a feature is missing; (3) mini-world libraries do not include confounding neighbours, which is why full-world accuracy (72 %) is
   lower than the mini-world AUC suggests; (4) the redraw loop makes standard-world generation 31 s typical, ≈ 60–90 s worst case (the progress bar restarts per draw).
+
+### M6 — as built (deviations from the plan above, and why)
+
+**Measured:** 199 tests (17 new); a headless-Chromium run (dev preset) drills, surveys, assays, dates, samples fossils, draws a tie, writes a hypothesis, saves,
+reloads the page and restores the identical budget, cores and notebook.
+
+- **Observation (`observation/service.ts`)** now has five actions. Everything is still a pure function of (world, action) and free to repeat.
+  - **Survey** (land cells only): a measured outcrop section, id `out-<cell>`. Exposed thickness grows with relief and erosion rate (3–250 m). Cheap
+    (2 + 0.01·m) but worse than a core: covered intervals (fraction 0.6·(1 − exposure) + 0.03), tape-stretch error, and *weathered* samples (noise ×1.5,
+    TOC ×0.7, pyrite S ×0.4). δ18O diagenesis follows the **maximum burial** (deposit thickness plus 1.3 × the erased overburden), so exhumed rocks read
+    as deeply buried ones.
+  - **Date** (cost 15, charged even when it fails): needs ash in the 6-cm sample (ash ≥ 2 % of the solids); age = ashAge/ash, σ = 0.001·age + 0.005 Myr;
+    5 % inherited-grain (too old) and 5 % Pb-loss (too young) outliers; a world-wide decay-constant bias of 0.1 %. No ash → `ageMa: null`, note
+    "no datable ash".
+  - **Fossils** (cost 3 per unit effort; 3000 individuals per effort unit): a deterministic taphonomic draw (`drawAssemblage`) at that layer's
+    environment and age window, lumped into named **morphotypes** (`morphotypes.ts`: clade, hard parts, realm, log body-mass and depth-preference classes)
+    — the player sees forms, never species ids.
+- **Game layer (all pure, in `src/game/`)**
+  - `agemodel.ts`: weighted isotonic regression (pool-adjacent-violators), linear interpolation, 1σ band, per-segment sedimentation rates, *flat* segments
+    (hiatus or bad date), and a list of >3σ suspect dates.
+  - `correlation.ts`: ties of four kinds (ash 0, excursion 0.05, fossil 0.3, manual 0.2 Myr). Ages propagate from dated cores along ties by
+    generation, never from a core of equal or higher generation, so a loop of ties cannot count one date twice. Crossing ties are detected.
+  - `notebook.ts`: hypotheses (claim type, confidence, status, evidence links). M7 will turn it into a submission.
+  - `save.ts`: a save is `{config, action log, ties, notebook, budget}`. The world is regenerated and the actions replayed; the replayed budget
+    must match the saved one (otherwise a warning: model changed). `modelVersion` mismatch warns too. Autosave to `localStorage` plus JSON export/import.
+- **UI:** tabs Core (click to pick a depth; date and fossil markers on the log), Correlate (all cores on one depth scale, optional proxy curve, click-click
+  ties), Age model (age–depth plot with error bars, rate table, biostratigraphic range chart), Notebook.
+- **Known limits:** (1) effort-1 fossil samples return dozens of forms in rich shelves — abundance/rarity needs tuning in M8; (2) the correlation tab
+  uses one depth scale for all cores, so short sections are tiny; (3) nothing yet suggests ties automatically (deliberate); (4) fossil sampling at a depth
+  uses the environment of the layer, so repeated samples within one bed are identical by design.
