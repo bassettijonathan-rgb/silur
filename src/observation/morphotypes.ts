@@ -25,7 +25,7 @@ export function habitOf(bio: BioWorld, i: number): string {
 /** Group key: species that look the same to a specialist share it. */
 export function morphotypeKey(bio: BioWorld, i: number): string {
   const sp = bio.species;
-  return [sp.clade[i], sp.hard[i], sp.mineral[i] > 0 ? 1 : 0, sp.realm[i], Math.round(sp.logMass[i] / 0.8), Math.round(Math.log1p(sp.depthPref[i]) / 0.8), sp.pelagic[i]].join('|');
+  return [sp.clade[i], sp.hard[i], sp.mineral[i] > 0 ? 1 : 0, sp.realm[i], Math.round(sp.logMass[i] / 1.2), Math.round(Math.log1p(sp.depthPref[i]) / 1.2), sp.pelagic[i]].join('|');
 }
 
 export function morphotypeName(bio: BioWorld, i: number): string {

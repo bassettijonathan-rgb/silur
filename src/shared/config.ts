@@ -58,7 +58,16 @@ export const DEFAULT_DIFFICULTY: DifficultyParams = {
   murkyFraction: 0,
   worldPosteriorMin: 0.6,
   maxTries: 4,
-  budget: 100,
+  budget: 500,
+};
+
+export type DifficultyName = 'easy' | 'normal' | 'hard';
+
+/** Difficulty levels: each is a partial override of the defaults. Tuned with bot players (tools/run-bots.ts, DESIGN.md M8). */
+export const PRESET_DIFFICULTY: Record<DifficultyName, Partial<DifficultyParams>> = {
+  easy: { preservation: 0.8, noiseScale: 0.7, mimicFrequency: 0.3, eventDensity: 0.8, budget: 800 },
+  normal: {},
+  hard: { preservation: 0.4, noiseScale: 1.4, mimicFrequency: 0.8, eventDensity: 1.3, budget: 300 },
 };
 
 export type PresetName = 'dev' | 'standard' | 'large';

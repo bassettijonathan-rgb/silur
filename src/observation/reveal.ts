@@ -84,8 +84,12 @@ export function auditEvents(world: World): EventAudit[] {
 }
 
 export function scoreTargets(world: World, audits: EventAudit[]): ScoreTarget[] {
+  // clusters: events linked by cause (union-find over the parent links)
+  const root = new Map<number, number>();
+  const find = (x: number): number => { let r = x; while ((root.get(r) ?? r) !== r) r = root.get(r)!; root.set(x, r); return r; };
+  for (const e of world.catalog) for (const p of e.parents) root.set(find(e.id), find(p));
   return world.catalog.map((e, k) => ({
-    id: e.id, type: SUBMISSION_OF[e.type] ?? 'other', ageMa: e.ageMa, cause: CAUSE_OF[e.cause], weight: audits[k].weight,
+    id: e.id, type: SUBMISSION_OF[e.type] ?? 'other', ageMa: e.ageMa, cause: CAUSE_OF[e.cause], weight: audits[k].weight, cluster: find(e.id),
   }));
 }
 

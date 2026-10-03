@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Rng } from '../../src/shared/rng';
 import {
-  ALPHA, MISS_BITS, ScoreTarget, ageBitsRaw, assign, binaryBits, brier, categoricalBits, intervalScore, matchEvents, scoreSubmission,
+  ALPHA, EVENT_WEIGHT, MISS_BITS, ScoreTarget, ageBitsRaw, assign, binaryBits, brier, categoricalBits, intervalScore, matchEvents, scoreSubmission,
 } from '../../src/shared/scoring';
 import { CAUSES, SubmittedEvent, sanitizeSubmission } from '../../src/shared/submission';
 
 const ev = (id: string, type: SubmittedEvent['type'], lo: number, hi: number, exists = 0.9, causes: SubmittedEvent['causes'] = {}): SubmittedEvent =>
   ({ id, type, ageMinMa: lo, ageMaxMa: hi, exists, causes });
-const tg = (id: number, type: ScoreTarget['type'], old: number, young: number, cause: ScoreTarget['cause'] = 'unknown_natural', weight = 1): ScoreTarget =>
-  ({ id, type, ageMa: [old, young], cause, weight });
+const tg = (id: number, type: ScoreTarget['type'], old: number, young: number, cause: ScoreTarget['cause'] = 'unknown_natural', weight = 1, cluster = id): ScoreTarget =>
+  ({ id, type, ageMa: [old, young], cause, weight, cluster });
 
 describe('propriety: honest belief maximises expected score', () => {
   const grid = Array.from({ length: 99 }, (_, i) => (i + 1) / 100);
@@ -70,7 +70,7 @@ describe('assignment and matching', () => {
   });
   it('matches by type and overlapping age, preferring the closest pair', () => {
     const targets = [tg(1, 'oae', 85.9, 85.8), tg(2, 'oae', 85.6, 85.5), tg(3, 'lip', 85.9, 85.8)];
-    const subs = [ev('x', 'oae', 85.55, 85.62), ev('y', 'oae', 85.8, 85.95), ev('z', 'hyperthermal', 85.8, 85.9)];
+    const subs = [ev('x', 'oae', 85.55, 85.62), ev('y', 'oae', 85.8, 85.95), ev('z', 'glaciation', 85.8, 85.9)];
     const m = matchEvents(subs, targets);
     expect(m.get('x')!.id).toBe(2);
     expect(m.get('y')!.id).toBe(1);
@@ -118,6 +118,31 @@ describe('scoreSubmission', () => {
     expect(f(68, 71)).toBeGreaterThan(f(69.9, 70.05)); // narrow and wrong is worse than wide and right
   });
   it('lists every cause the sanitiser accepts', () => { expect(CAUSES).toContain('civilization'); });
+});
+
+describe('forgiving rules', () => {
+  it('an episode claim can stand for the forced event that caused it, and is then judged on its cause', () => {
+    const t = [tg(1, 'clathrate', 56, 55.9, 'clathrate')];
+    const r = scoreSubmission({ pCivilization: 0.5, events: [ev('a', 'hyperthermal', 55.8, 56.1, 0.8, { clathrate: 0.7, lip: 0.3 })] }, t, false);
+    expect(r.matches).toHaveLength(1);
+    expect(r.matches[0].causeBits).toBeGreaterThan(1);
+    const wrong = scoreSubmission({ pCivilization: 0.5, events: [ev('a', 'hyperthermal', 55.8, 56.1, 0.8, { lip: 0.9, clathrate: 0.1 })] }, t, false);
+    expect(wrong.matches[0].causeBits!).toBeLessThan(0);
+  });
+  it('exact types are preferred to aliases', () => {
+    const t = [tg(1, 'clathrate', 56, 55.9, 'clathrate'), tg(2, 'hyperthermal', 56, 55.9, 'clathrate')];
+    const m = matchEvents([ev('a', 'hyperthermal', 55.8, 56.1)], t);
+    expect(m.get('a')!.id).toBe(2);
+  });
+  it('misses are charged once per cluster, and not at all if any member was found', () => {
+    const cluster = [tg(1, 'lip', 70, 69, 'lip', 1, 7), tg(2, 'oae', 69.5, 69.4, 'lip', 0.8, 7), tg(3, 'extinction', 69.3, 69.2, 'lip', 0.6, 7)];
+    const none = scoreSubmission({ pCivilization: 0.5, events: [] }, cluster, false);
+    expect(none.misses).toHaveLength(1);
+    expect(none.totals.miss).toBeCloseTo(-MISS_BITS * EVENT_WEIGHT, 9);
+    expect(none.doNothing).toBeCloseTo(-MISS_BITS * EVENT_WEIGHT, 9);
+    const some = scoreSubmission({ pCivilization: 0.5, events: [ev('x', 'oae', 69.3, 69.6, 0.9, { lip: 1 })] }, cluster, false);
+    expect(some.misses).toHaveLength(0);
+  });
 });
 
 describe('sanitizeSubmission', () => {

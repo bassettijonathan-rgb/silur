@@ -19,15 +19,18 @@ export interface CorrelationState {
   ties: Tie[];
   proxy: ProxyId | null;
   pending: { coreId: string; depthM: number } | null;
+  /** Stretch each core to the full height instead of using one metre scale for all. */
+  normalise?: boolean;
 }
 
-interface Layout { x0: number; x: Map<string, number>; scale: number }
+interface Layout { x0: number; x: Map<string, number>; scale: (c: CoreResult) => number }
 
-function layout(canvas: HTMLCanvasElement, cores: CoreResult[]): Layout {
+function layout(canvas: HTMLCanvasElement, cores: CoreResult[], normalise = false): Layout {
   const maxLen = Math.max(1, ...cores.map((c) => c.lengthM));
   const x = new Map<string, number>();
   cores.forEach((c, i) => x.set(c.coreId, PAD + 24 + i * (COL_W + GAP)));
-  return { x0: PAD, x, scale: (canvas.height - TOP - PAD) / maxLen };
+  const common = (canvas.height - TOP - PAD) / maxLen;
+  return { x0: PAD, x, scale: (c) => (normalise ? (canvas.height - TOP - PAD) / Math.max(1, c.lengthM) : common) };
 }
 
 export function canvasWidthFor(n: number): number { return Math.max(520, PAD + 24 + n * (COL_W + GAP)); }
@@ -36,8 +39,9 @@ export function drawCorrelation(canvas: HTMLCanvasElement, st: CorrelationState)
   const g = canvas.getContext('2d')!;
   g.clearRect(0, 0, canvas.width, canvas.height);
   if (!st.cores.length) { g.fillStyle = '#789'; g.fillText('drill or survey at least two sites to correlate them', 20, 30); return; }
-  const L = layout(canvas, st.cores);
-  const yOf = (z: number) => TOP + z * L.scale;
+  const L = layout(canvas, st.cores, st.normalise);
+  const byId = new Map(st.cores.map((c) => [c.coreId, c]));
+  const yOfCore = (id: string, z: number) => TOP + z * L.scale(byId.get(id)!);
   g.font = '11px system-ui'; g.textBaseline = 'middle';
 
   // tie lines first, under the columns
@@ -47,24 +51,25 @@ export function drawCorrelation(canvas: HTMLCanvasElement, st: CorrelationState)
     const [left, right] = xa < xb ? [t.a, t.b] : [t.b, t.a];
     const xl = Math.min(xa, xb) + COL_W, xr = Math.max(xa, xb);
     g.strokeStyle = TIE_COLORS[t.kind]; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(xl, yOf(left.depthM)); g.lineTo(xr, yOf(right.depthM)); g.stroke();
+    g.beginPath(); g.moveTo(xl, yOfCore(left === t.a ? t.a.coreId : t.b.coreId, left.depthM)); g.lineTo(xr, yOfCore(right === t.a ? t.a.coreId : t.b.coreId, right.depthM)); g.stroke();
   }
   g.lineWidth = 1;
 
   st.cores.forEach((c) => {
     const x = L.x.get(c.coreId)!;
+    const sc = L.scale(c), yOf = (z: number) => TOP + z * sc;
     g.fillStyle = '#9ab';
     g.fillText(`${c.cell}${c.source === 'outcrop' ? ' ▫' : ''}`, x, 19);
     // depth ticks
     for (let z = 0; z <= c.lengthM; z += tick(c.lengthM)) { g.fillText(`${z}`, x - 24, yOf(z)); }
     for (const b of c.beds) {
       g.fillStyle = LITH_COLORS[b.lith];
-      g.fillRect(x, yOf(b.topM), LOG_W, Math.max(0.8, (b.baseM - b.topM) * L.scale));
-      if (b.notes.some((n) => n.includes('ash'))) { g.fillStyle = '#ff0'; g.fillRect(x + LOG_W - 5, yOf(b.topM), 5, Math.max(2, (b.baseM - b.topM) * L.scale)); }
+      g.fillRect(x, yOf(b.topM), LOG_W, Math.max(0.8, (b.baseM - b.topM) * sc));
+      if (b.notes.some((n) => n.includes('ash'))) { g.fillStyle = '#ff0'; g.fillRect(x + LOG_W - 5, yOf(b.topM), 5, Math.max(2, (b.baseM - b.topM) * sc)); }
     }
     g.fillStyle = 'rgba(0,0,0,0.55)';
-    for (const gap of c.gaps) g.fillRect(x, yOf(gap.topM), LOG_W, Math.max(1, (gap.baseM - gap.topM) * L.scale));
-    g.strokeStyle = '#667'; g.strokeRect(x, TOP, LOG_W, c.lengthM * L.scale);
+    for (const gap of c.gaps) g.fillRect(x, yOf(gap.topM), LOG_W, Math.max(1, (gap.baseM - gap.topM) * sc));
+    g.strokeStyle = '#667'; g.strokeRect(x, TOP, LOG_W, c.lengthM * sc);
 
     // proxy curve
     const samples = st.proxy ? st.assays.get(c.coreId)?.get(st.proxy)?.filter((s) => s.value !== null) : undefined;
@@ -75,7 +80,7 @@ export function drawCorrelation(canvas: HTMLCanvasElement, st: CorrelationState)
       for (const s of samples) { lo = Math.min(lo, tf(s.value!)); hi = Math.max(hi, tf(s.value!)); }
       if (!(hi > lo)) { lo -= 1; hi += 1; }
       const cx0 = x + LOG_W + 6, cw = COL_W - LOG_W - 8;
-      g.strokeStyle = '#445'; g.strokeRect(cx0, TOP, cw, c.lengthM * L.scale);
+      g.strokeStyle = '#445'; g.strokeRect(cx0, TOP, cw, c.lengthM * sc);
       g.strokeStyle = CURVE_COLORS[0]; g.beginPath();
       samples.forEach((s, i) => { const px = cx0 + ((tf(s.value!) - lo) / (hi - lo)) * cw, py = yOf(s.depthM); if (i === 0) g.moveTo(px, py); else g.lineTo(px, py); });
       g.stroke();
@@ -84,21 +89,21 @@ export function drawCorrelation(canvas: HTMLCanvasElement, st: CorrelationState)
 
   if (st.pending) {
     const x = L.x.get(st.pending.coreId);
-    if (x !== undefined) { g.strokeStyle = '#ffec4d'; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(x - 4, yOf(st.pending.depthM)); g.lineTo(x + COL_W, yOf(st.pending.depthM)); g.stroke(); g.setLineDash([]); }
+    if (x !== undefined) { g.strokeStyle = '#ffec4d'; g.setLineDash([4, 3]); const py = yOfCore(st.pending.coreId, st.pending.depthM); g.beginPath(); g.moveTo(x - 4, py); g.lineTo(x + COL_W, py); g.stroke(); g.setLineDash([]); }
   }
   g.fillStyle = '#9ab'; g.textBaseline = 'alphabetic';
   g.fillText(st.proxy ? `curve: ${PROXIES[st.proxy].label}` : 'curve: none', PAD, 7);
 }
 
 /** Which core and depth were clicked, if any. */
-export function correlationHit(canvas: HTMLCanvasElement, cores: CoreResult[], ev: MouseEvent): { coreId: string; depthM: number } | null {
+export function correlationHit(canvas: HTMLCanvasElement, cores: CoreResult[], ev: MouseEvent, normalise = false): { coreId: string; depthM: number } | null {
   const r = canvas.getBoundingClientRect();
   const px = ((ev.clientX - r.left) / r.width) * canvas.width, py = ((ev.clientY - r.top) / r.height) * canvas.height;
-  const L = layout(canvas, cores);
+  const L = layout(canvas, cores, normalise);
   for (const c of cores) {
     const x = L.x.get(c.coreId)!;
     if (px >= x - 4 && px <= x + COL_W) {
-      const depthM = (py - TOP) / L.scale;
+      const depthM = (py - TOP) / L.scale(c);
       if (depthM >= 0 && depthM <= c.lengthM) return { coreId: c.coreId, depthM: +depthM.toFixed(2) };
     }
   }

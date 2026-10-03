@@ -128,7 +128,7 @@ export type ClientMessage =
 export type ErrorCode = 'insufficient_budget' | 'unknown_core' | 'out_of_range' | 'bad_request' | 'not_ready' | 'already_submitted';
 
 export type ServerMessage =
-  | { kind: 'progress'; stage: Stage; frac: number }
+  | { kind: 'progress'; stage: Stage; frac: number; attempt?: number }
   | { kind: 'ready'; info: PublicInfo }
   | { kind: 'result'; reqId: number; measurement: Measurement }
   | { kind: 'revealed'; reqId: number; score: ScoreReport; reveal: RevealPayload }

@@ -17,7 +17,7 @@ export class ObservationClient {
   private nextReq = 1;
   private readonly pending = new Map<number, { ok: (m: Measurement) => void; err: (e: ActionError) => void }>();
   private readonly pendingSubmit = new Map<number, { ok: (m: RevealMessage) => void; err: (e: ActionError) => void }>();
-  private gen: { ok: (i: PublicInfo) => void; err: (e: ActionError) => void; onProgress?: (s: Stage, f: number) => void } | null = null;
+  private gen: { ok: (i: PublicInfo) => void; err: (e: ActionError) => void; onProgress?: (s: Stage, f: number, attempt?: number) => void } | null = null;
 
   constructor(private readonly transport: Transport) {
     transport.subscribe((m) => this.onMessage(m));
@@ -25,7 +25,7 @@ export class ObservationClient {
 
   private onMessage(m: ServerMessage): void {
     switch (m.kind) {
-      case 'progress': this.gen?.onProgress?.(m.stage, m.frac); return;
+      case 'progress': this.gen?.onProgress?.(m.stage, m.frac, m.attempt); return;
       case 'ready': this.gen?.ok(m.info); this.gen = null; return;
       case 'result': { const p = this.pending.get(m.reqId); this.pending.delete(m.reqId); p?.ok(m.measurement); return; }
       case 'revealed': { const p = this.pendingSubmit.get(m.reqId); this.pendingSubmit.delete(m.reqId); p?.ok({ score: m.score, reveal: m.reveal }); return; }
@@ -39,7 +39,7 @@ export class ObservationClient {
     }
   }
 
-  generate(config: WorldConfig, onProgress?: (s: Stage, f: number) => void): Promise<PublicInfo> {
+  generate(config: WorldConfig, onProgress?: (s: Stage, f: number, attempt?: number) => void): Promise<PublicInfo> {
     return new Promise((ok, err) => {
       this.gen = { ok, err, onProgress };
       this.transport.post({ kind: 'generate', config });

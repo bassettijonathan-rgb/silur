@@ -6,6 +6,12 @@
  *   - age:                                    3·(1 − IS/IS_ref), floored at −3    — IS is the proper interval score for an 80 % interval
  *   - missed events:                          −MISS_BITS × weight, where weight = significance × detectability-in-principle
  * Brier is reported next to the log score for the probability statements.
+ *
+ * Two forgiving rules keep the score about science rather than bookkeeping:
+ *   - an episode claim ("hyperthermal", "extinction pulse"…) may be matched to the forced event that causes it (clathrate, LIP, impact…), at a small
+ *     distance penalty, because a geologist sees the effect before she names the cause;
+ *   - misses are charged per CLUSTER (a forced event and everything it caused): finding any member of the cluster clears the whole cluster, and an
+ *     unfound cluster costs its heaviest member once.
  */
 import { CAUSES, CauseId, SubmissionType, Submission, SubmittedEvent, isEpisode } from './submission';
 
@@ -15,6 +21,8 @@ export const AGE_REF_MYR = 2; //     an interval score this large earns 0 age bi
 export const AGE_MAX_BITS = 3;
 export const AGE_MIN_BITS = -3;
 export const MISS_BITS = 2;
+/** The headline question is the main puzzle: the event list (existence, cause, age, misses) counts a quarter as much per bit in the total. Per-item bits shown in the reveal are unweighted. */
+export const EVENT_WEIGHT = 0.25;
 export const MATCH_TOL_MYR = 0.1;
 
 const log2 = (x: number): number => Math.log(x) / Math.LN2;
@@ -42,6 +50,8 @@ export interface ScoreTarget {
   cause: CauseId;
   /** significance × detectability, 0..1. Zero = nobody could be blamed for missing it. */
   weight: number;
+  /** Events linked by cause (a LIP and the OAEs and extinctions it triggered) share a cluster id. */
+  cluster: number;
 }
 
 export interface MatchReport {
@@ -108,14 +118,20 @@ export function assign(cost: number[][]): number[] {
 }
 
 const BIG = 1e6;
+/** Which forced events an episode claim may stand for (the claim's cause probabilities are then judged against the truth's real cause). */
+const ALIAS: Partial<Record<SubmissionType, SubmissionType[]>> = {
+  hyperthermal: ['clathrate', 'lip', 'civilization'], oae: ['lip', 'clathrate'], extinction: ['bolide', 'lip', 'aridification', 'civilization'], glaciation: [],
+};
+const ALIAS_PENALTY_MYR = 0.3;
 const mid = (a: [number, number]): number => 0.5 * (a[0] + a[1]);
 
 /** Which submitted event explains which truth entry: same type, intervals overlapping within a tolerance, minimum total age distance. */
 export function matchEvents(sub: SubmittedEvent[], targets: ScoreTarget[], tol = MATCH_TOL_MYR): Map<string, ScoreTarget> {
   const cost = sub.map((s) => targets.map((t) => {
-    if (t.type !== s.type) return BIG;
+    const exact = t.type === s.type;
+    if (!exact && !(ALIAS[s.type] as string[] | undefined)?.includes(t.type)) return BIG;
     if (s.ageMinMa - tol > t.ageMa[0] || s.ageMaxMa + tol < t.ageMa[1]) return BIG;
-    return Math.abs(mid(t.ageMa) - 0.5 * (s.ageMinMa + s.ageMaxMa));
+    return Math.abs(mid(t.ageMa) - 0.5 * (s.ageMinMa + s.ageMaxMa)) + (exact ? 0 : ALIAS_PENALTY_MYR);
   }));
   const out = new Map<string, ScoreTarget>();
   if (!sub.length || !targets.length) return out;
@@ -166,18 +182,35 @@ export function scoreSubmission(sub: Submission, targets: ScoreTarget[], civiliz
       covered: x >= s.ageMinMa && x <= s.ageMaxMa, intervalScore: is, ageBits: ab, existsBits: exBits, trueCause: t.cause, pTrueCause: pTrue, causeBits: cb,
     });
   }
+  // misses, per cluster: found if any member was matched; otherwise the heaviest member is charged once
+  const found = new Set(targets.filter((t) => used.has(t.id)).map((t) => t.cluster));
+  const heaviest = new Map<number, ScoreTarget>();
+  for (const t of targets) {
+    if (found.has(t.cluster) || t.weight <= 0) continue;
+    const h = heaviest.get(t.cluster);
+    if (!h || t.weight > h.weight) heaviest.set(t.cluster, t);
+  }
   const misses: MissReport[] = [];
   let miss = 0;
-  for (const t of targets) {
-    if (used.has(t.id) || t.weight <= 0) continue;
+  for (const t of heaviest.values()) {
     const bits = -MISS_BITS * t.weight;
     miss += bits;
     misses.push({ truthId: t.id, type: t.type, ageMa: t.ageMa, weight: t.weight, bits });
   }
-  const doNothing = -MISS_BITS * targets.reduce((a, t) => a + Math.max(0, t.weight), 0);
-  const totals = { headline: headlineBits, existence, cause, age, miss, total: headlineBits + existence + cause + age + miss };
+  const W = EVENT_WEIGHT;
+  const doNothing = -MISS_BITS * clusterWeights(targets) * W;
+  const totals = { headline: headlineBits, existence: existence * W, cause: cause * W, age: age * W, miss: miss * W, total: headlineBits + W * (existence + cause + age + miss) };
   return {
     headline: { p: sub.pCivilization, truth: civilizationPresent, bits: headlineBits, brier: briers[0] },
     matches, falsePositives, misses, calibration, totals, doNothing, brier: briers.reduce((a, b) => a + b, 0) / briers.length,
   };
+}
+
+/** Σ over clusters of the heaviest member's weight: the total a player could be charged for finding nothing. */
+export function clusterWeights(targets: ScoreTarget[]): number {
+  const best = new Map<number, number>();
+  for (const t of targets) best.set(t.cluster, Math.max(best.get(t.cluster) ?? 0, t.weight));
+  let s = 0;
+  for (const w of best.values()) s += w;
+  return s;
 }

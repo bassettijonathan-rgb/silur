@@ -4,7 +4,7 @@ import { TIE_SIGMA_MA, TieKind } from '../game/correlation';
 import { EvidenceRef } from '../game/notebook';
 import { parseSave, serialize } from '../game/save';
 import { Session } from '../game/session';
-import { PresetName, makeConfig } from '../shared/config';
+import { DifficultyName, PRESET_DIFFICULTY, PresetName, makeConfig } from '../shared/config';
 import { LITHOLOGIES } from '../shared/lithology';
 import { Stage } from '../shared/protocol';
 import { PROXIES, PROXY_IDS, ProxyId } from '../shared/proxies';
@@ -39,6 +39,7 @@ export class App {
 
   private readonly seed = el('input', { value: 'alpha', size: '10' });
   private readonly preset = el('select', {}, ...(['standard', 'dev'] as PresetName[]).map((p) => el('option', { value: p }, p)));
+  private readonly level = el('select', {}, ...(['easy', 'normal', 'hard'] as DifficultyName[]).map((l) => el('option', l === 'normal' ? { value: l, selected: '' } : { value: l }, l)));
   private readonly go = el('button', {}, 'Generate world');
   private readonly saveBtn = el('button', {}, 'Save');
   private readonly loadBtn = el('button', {}, 'Load');
@@ -80,6 +81,7 @@ export class App {
   private readonly corrCanvas = el('canvas', { width: '860', height: '560' });
   private readonly tieKind = el('select', {}, ...(['ash', 'excursion', 'fossil', 'manual'] as TieKind[]).map((k) => el('option', { value: k }, `${k} (±${TIE_SIGMA_MA[k]} Myr)`)));
   private readonly corrProxy = el('select', {}, el('option', { value: '' }, 'no curve'), ...PROXY_IDS.map((p) => el('option', { value: p }, PROXIES[p].label)));
+  private readonly normDepth = el('input', { type: 'checkbox' });
   private readonly tieList = el('div');
   private readonly corrHint = el('div', { class: 'dim' }, 'click a depth in one core, then a depth in another, to draw a tie');
 
@@ -97,11 +99,11 @@ export class App {
         el('div', {}, 'depth window ', this.zFrom, '–', this.zTo, ' m   ·   proxy ', this.proxySel, ' every ', this.spacing, ' m ', this.assayBtn, this.assayInfo),
         el('div', {}, this.pickInfo, ' ', this.dateBtn, ' ', this.effort, ' ', this.fossilBtn), this.fossilOut));
     this.panels.correlate.append(
-      el('div', {}, 'tie kind ', this.tieKind, ' · curve ', this.corrProxy), this.corrHint, el('div', { class: 'scroll' }, this.corrCanvas), this.tieList);
+      el('div', {}, 'tie kind ', this.tieKind, ' · curve ', this.corrProxy, ' · ', this.normDepth, ' stretch every core to full height'), this.corrHint, el('div', { class: 'scroll' }, this.corrCanvas), this.tieList);
     this.panels.age.append(this.ageCanvas, this.ageBody);
 
     root.append(
-      el('div', { class: 'top' }, el('b', {}, 'Silur'), ' seed ', this.seed, this.preset, this.go, this.saveBtn, this.loadBtn, this.exportBtn, this.importInput, this.budget, this.bar, this.stage),
+      el('div', { class: 'top' }, el('b', {}, 'Silur'), ' seed ', this.seed, this.preset, this.level, this.go, this.saveBtn, this.loadBtn, this.exportBtn, this.importInput, this.budget, this.bar, this.stage),
       el('div', { class: 'main' },
         el('div', {}, el('div', {}, 'map layer ', this.layerSel), this.map, this.cellInfo,
           el('div', {}, 'core depth (m) ', this.depth, this.drillBtn, ' ', this.surveyBtn), this.log),
@@ -134,6 +136,7 @@ export class App {
     });
     this.corrCanvas.addEventListener('click', (ev) => this.corrClick(ev));
     this.corrProxy.addEventListener('change', () => this.redrawCorr());
+    this.normDepth.addEventListener('change', () => this.render());
     this.setEnabled(false);
     this.render();
   }
@@ -147,10 +150,10 @@ export class App {
 
   // ---------- world lifecycle ----------
 
-  private progress = (stage: Stage, frac: number): void => {
+  private progress = (stage: Stage, frac: number, attempt = 0): void => {
     const total = STAGE_START[stage] + STAGE_SPAN[stage] * frac;
     (this.bar.firstElementChild as HTMLElement).style.width = `${Math.round(total * 100)}%`;
-    this.stage.textContent = STAGE_LABEL[stage];
+    this.stage.textContent = (attempt ? `redraw ${attempt}: ` : '') + STAGE_LABEL[stage];
   };
 
   private resetView(): void {
@@ -175,7 +178,7 @@ export class App {
   async generate(): Promise<void> {
     this.resetView();
     await this.withBusy(async () => {
-      await this.session.start(makeConfig(this.seed.value || 'alpha', this.preset.value as PresetName), this.progress);
+      await this.session.start(makeConfig(this.seed.value || 'alpha', this.preset.value as PresetName, PRESET_DIFFICULTY[this.level.value as DifficultyName]), this.progress);
       this.say('A new field area. Choose a site on the map: drill a core, or survey an outcrop on land.');
     });
   }
@@ -333,7 +336,7 @@ export class App {
   // ---------- correlation ----------
 
   private corrClick(ev: MouseEvent): void {
-    const hit = correlationHit(this.corrCanvas, [...this.session.cores.values()], ev);
+    const hit = correlationHit(this.corrCanvas, [...this.session.cores.values()], ev, this.normDepth.checked);
     if (!hit) return;
     if (!this.pendingTie || this.pendingTie.coreId === hit.coreId) { this.pendingTie = hit; this.corrHint.textContent = `marked ${hit.depthM} m — now click a depth in another core`; }
     else {
@@ -348,7 +351,7 @@ export class App {
     const cores = [...this.session.cores.values()];
     this.corrCanvas.width = canvasWidthFor(cores.length);
     drawCorrelation(this.corrCanvas, {
-      cores, assays: this.session.assays, ties: this.session.ties, proxy: (this.corrProxy.value || null) as ProxyId | null, pending: this.pendingTie,
+      cores, assays: this.session.assays, ties: this.session.ties, proxy: (this.corrProxy.value || null) as ProxyId | null, pending: this.pendingTie, normalise: this.normDepth.checked,
     });
     this.tieList.replaceChildren(...this.session.ties.map((t) => {
       const rm = el('button', {}, '✕');

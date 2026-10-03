@@ -32,6 +32,7 @@ npx tsx tools/run-world.ts alpha standard             # whole world: truth catal
 npx tsx tools/run-bio.ts alpha standard             # diversity curve + extinction selectivity
 npx tsx tools/build-signatures.ts 200               # rebuild the ideal observer's signature library (needed after physics changes)
 npx tsx tools/probe-gate.ts 20 dev                  # how often the solvability gate passes and how the ideal observer does
+npx tsx tools/run-bots.ts 40 dev normal         # balancing: play bot players over 40 worlds, print the score ladder (n, preset, easy|normal|hard, first seed, budget)
 npx tsx tools/depcheck.ts      # check the layer boundaries
 npm run dev                    # the game (worker generates a world in ~20 s);  /dev/earth.html and /dev/strat.html = debug plots / map+column viewer (developer only)
 ```

@@ -37,7 +37,8 @@ export interface World {
   catalog: TruthEvent[];
 }
 
-export type Progress = (stage: Stage, frac: number) => void;
+/** `attempt` > 0 means the solvability gate is redrawing the world. */
+export type Progress = (stage: Stage, frac: number, attempt?: number) => void;
 
 export interface GenerateOptions {
   /** Use these events instead of drawing them (scenario worlds, tests). */

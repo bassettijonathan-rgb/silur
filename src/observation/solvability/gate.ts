@@ -33,10 +33,10 @@ export function generateSolvableWorld(
   const murkyDraw = new Rng(`${config.seed}|murky`).next() < d.murkyFraction;
   let best: { world: World; assessment: Assessment } | null = null;
   for (let attempt = 0; attempt < Math.max(1, d.maxTries); attempt++) {
-    const world = generateWorld(config, onProgress, { ...options, attempt });
-    onProgress('solvability', 0);
+    const world = generateWorld(config, (s, f) => onProgress(s, f, attempt), { ...options, attempt });
+    onProgress('solvability', 0, attempt);
     const assessment = assess(world, model, d.worldPosteriorMin);
-    onProgress('solvability', 1);
+    onProgress('solvability', 1, attempt);
     if (murkyDraw) return { world, solvability: { assessment, attempts: attempt + 1, murky: true } };
     if (assessment.solvable) return { world, solvability: { assessment, attempts: attempt + 1, murky: false } };
     if (!best || assessment.minTruePosterior > best.assessment.minTruePosterior) best = { world, assessment };

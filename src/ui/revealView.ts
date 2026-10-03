@@ -20,7 +20,7 @@ export function renderReveal(root: HTMLElement, r: RevealMessage, sub: Submissio
     el('div', { class: 'dim' }, 'Timeline: filled bars are what happened (a slash marks events nobody could have been expected to find); outlines are your claims, dashed if they matched nothing.'),
     summary(r),
     timeline,
-    el('h4', {}, 'Every event, and what survived of it'), eventTable(v.events, s.matches.map((m) => m.truthId), v.cells),
+    el('h4', {}, 'Every event, and what survived of it'), eventTable(v.events, s.matches.map((m) => m.truthId), s.misses.map((m) => m.truthId), v.cells),
     el('h4', {}, 'Rock destroyed by erosion, by the age of the rock'), erased,
     el('div', { class: 'dim' }, `Mean removed per cell: ${(v.erasedByAge.thicknessM.reduce((a, b) => a + b, 0) / v.cells).toFixed(0)} m. Events whose rock was destroyed or never formed are not charged as misses.`),
     el('h4', {}, 'Your calibration'), el('div', { class: 'row' }, calib, calibrationText(s.calibration, history)),
@@ -45,17 +45,18 @@ function summary(r: RevealMessage): HTMLElement {
   }
   const t = s.totals;
   box.append(el('table', {},
-    ...[['headline', t.headline], ['events: really happened?', t.existence], ['episodes: cause', t.cause], ['ages (interval score)', t.age], ['missed detectable events', t.miss], ['TOTAL', t.total], ['(an empty answer would have scored)', s.doNothing]]
+    ...[['headline', t.headline], ['events: really happened?', t.existence], ['episodes: cause', t.cause], ['ages (interval score)', t.age], ['undiscovered causes', t.miss], ['TOTAL', t.total], ['(an empty answer would have scored)', s.doNothing]]
       .map(([k, x]) => el('tr', k === 'TOTAL' ? { class: 'total' } : String(k).startsWith('(') ? { class: 'dim' } : {}, el('td', {}, String(k)), el('td', {}, `${bits(x as number)} bits`)))));
-  box.append(el('div', { class: 'dim' }, `${s.matches.length} found · ${s.falsePositives.length} false alarms · ${s.misses.length} detectable events missed. Mean Brier over all your probabilities: ${s.brier.toFixed(2)}.`));
+  box.append(el('div', { class: 'dim' }, 'The headline counts in full; every event-list line counts a quarter.'));
+  box.append(el('div', { class: 'dim' }, `${s.matches.length} found · ${s.falsePositives.length} false alarms · ${s.misses.length} undiscovered causes (an LIP and the extinctions it caused count once). Mean Brier over all your probabilities: ${s.brier.toFixed(2)}.`));
   return box;
 }
 
-function eventTable(events: RevealEvent[], matchedIds: number[], cells: number): HTMLElement {
-  const matched = new Set(matchedIds);
+function eventTable(events: RevealEvent[], matchedIds: number[], missedIds: number[], cells: number): HTMLElement {
+  const matched = new Set(matchedIds), missed = new Set(missedIds);
   const rows = events.map((e) => {
     const a = e.audit;
-    const status = matched.has(e.id) ? 'found' : a.weight > 0 ? 'MISSED' : a.preservedCells === 0 ? 'no rock left' : 'too subtle';
+    const status = matched.has(e.id) ? 'found' : missed.has(e.id) ? 'MISSED' : a.weight > 0 ? 'cause found elsewhere' : a.preservedCells === 0 ? 'no rock left' : 'too subtle';
     return el('tr', status === 'MISSED' ? { class: 'bad' } : {}, el('td', {}, el('span', { style: `color:${TYPE_COLOR[e.type] ?? '#889'}` }, e.type)),
       el('td', {}, e.ageMa[0] === e.ageMa[1] ? e.ageMa[0].toFixed(3) : `${e.ageMa[0].toFixed(3)}–${e.ageMa[1].toFixed(3)}`), el('td', {}, magnitudeText(e)),
       el('td', {}, e.cause + (e.parents.length ? ` (← #${e.parents.join(', #')})` : '')), el('td', {}, `${a.preservedCells}/${a.depositedCells}`),

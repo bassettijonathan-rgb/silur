@@ -27,7 +27,7 @@ export const DRILL = { base: 5, perMeter: 0.02, offshoreFactor: 3, maxCoreM: 150
 export const SURVEY = { base: 2, perMeter: 0.01 };
 export const DATE_COST = 15;
 export const FOSSIL_COST_PER_EFFORT = 3;
-const FOSSIL_INDIVIDUALS = 3000; // individuals-equivalent of the death assemblage processed per unit of effort
+const FOSSIL_INDIVIDUALS = 800;  // individuals-equivalent of the death assemblage processed per unit of effort
 const SAMPLE_HALF_M = 0.03; // each sample integrates a 6-cm interval
 const MAX_SAMPLES = 400;
 
@@ -85,7 +85,10 @@ export class ObservationService {
       const col = s.columns[i];
       let lith = LITH['crystalline basement'];
       if (col.n > 0) lith = classify(col.tr, (col.n - 1) * NT, col.facies[col.n - 1]).lith;
-      if (hashUnit(this.seed, 'recon', i) < 0.15) lith = Math.floor(hashUnit(this.seed, 'recon-alt', i) * 10); // remote sensing is sometimes wrong
+      // remote sensing is sometimes wrong: mostly in whole patches (cloud, vegetation, a mis-registered scene), a little cell by cell
+      const bx = Math.floor((i % s.nx) / 3), by = Math.floor(Math.floor(i / s.nx) / 3);
+      const patchBad = hashUnit(this.seed, 'recon-patch', by * 1000 + bx) < 0.10;
+      if (patchBad ? hashUnit(this.seed, 'recon', i) < 0.7 : hashUnit(this.seed, 'recon', i) < 0.06) lith = Math.floor(hashUnit(this.seed, 'recon-alt', i) * 10);
       surfaceClass[i] = lith;
       const e = 0.15 + 0.5 * Math.min(1, s.relief[i] / 100) + 0.35 * Math.min(1, (s.erosionRate[i] * 1e6) / 50);
       exposure[i] = Math.round(100 * Math.min(1, Math.max(0, e + 0.05 * hashNormal(this.seed, 'expo', i))));

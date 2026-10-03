@@ -40,7 +40,7 @@ export class Session {
     this.draft = emptyDraft(); this.result = null;
   }
 
-  async start(config: WorldConfig, onProgress: (stage: Stage, frac: number) => void): Promise<PublicInfo> {
+  async start(config: WorldConfig, onProgress: (stage: Stage, frac: number, attempt?: number) => void): Promise<PublicInfo> {
     this.reset();
     this.config = config;
     this.info = await this.client.generate(config, onProgress);
@@ -148,7 +148,7 @@ export class Session {
   }
 
   /** Regenerate the world and replay the purchases. Throws if the replay does not reproduce the saved budget. */
-  async restore(save: SaveFile, onProgress: (stage: Stage, frac: number) => void): Promise<string[]> {
+  async restore(save: SaveFile, onProgress: (stage: Stage, frac: number, attempt?: number) => void): Promise<string[]> {
     await this.start(save.config, onProgress);
     const warnings: string[] = [];
     for (const a of save.actions) {

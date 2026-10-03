@@ -40,9 +40,9 @@ export class WorkerHost {
         this.service = null; this.world = null; this.submitted = false;
         try {
           let last = -1;
-          const world = this.makeWorld(msg.config, (stage, frac) => {
+          const world = this.makeWorld(msg.config, (stage, frac, attempt) => {
             const q = Math.round(frac * 20); // at most ~20 messages per stage
-            if (q !== last || frac === 0) { last = q; send({ kind: 'progress', stage, frac }); }
+            if (q !== last || frac === 0) { last = q; send(attempt ? { kind: 'progress', stage, frac, attempt } : { kind: 'progress', stage, frac }); }
           });
           this.world = world;
           this.service = new ObservationService(world);
