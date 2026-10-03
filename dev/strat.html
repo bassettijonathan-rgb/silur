@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Silur dev — Stratigraphy</title>
+    <style>
+      body { font: 13px system-ui, sans-serif; margin: 12px; background: #14161a; color: #dde; }
+      canvas { background: #1c1f26; border: 1px solid #333; cursor: crosshair; }
+      .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+      label { margin-right: 10px; }
+      h1 { font-size: 15px; }
+      .note { color: #f9a; }
+      #legend span { display: inline-block; margin-right: 10px; }
+      #legend i { display: inline-block; width: 11px; height: 11px; margin-right: 3px; vertical-align: -1px; }
+    </style>
+  </head>
+  <body>
+    <h1>Stratigraphy debug page <span class="note">(developer tool — uses the truth layer; not part of the game)</span></h1>
+    <label>seed <input id="seed" value="alpha" size="10" /></label>
+    <label>template
+      <select id="tpl"><option>passive-margin</option><option>foreland</option><option>intracratonic</option></select>
+    </label>
+    <label>grid <input id="nx" value="32" size="3" /></label>
+    <label>Myr <input id="dur" value="100" size="4" /></label>
+    <button id="go">run</button> <span id="info"></span>
+    <div id="legend"></div>
+    <div class="row">
+      <div><div>surface (click a cell) — blue = sea, green→brown = land</div><canvas id="map" width="512" height="512"></canvas></div>
+      <div><div>column: facies (left), δ13C carbonate ‰ (middle), TOC wt% (right); top = present</div><canvas id="col" width="520" height="512"></canvas></div>
+    </div>
+    <script type="module" src="./strat.ts"></script>
+  </body>
+</html>

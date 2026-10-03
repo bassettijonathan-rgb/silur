@@ -27,8 +27,8 @@ describe('layer boundaries (bundle graph)', () => {
     expect(leaked).toEqual([]);
   });
 
-  it('control: the same check does see truth modules in the developer-only debug page', async () => {
-    const ids = await moduleIdsFor('dev/earth.html');
-    expect(ids.some((id) => id.includes('/src/truth/earth/model.ts'))).toBe(true);
+  it('control: the same check does see truth modules in the developer-only debug pages', async () => {
+    expect((await moduleIdsFor('dev/earth.html')).some((id) => id.includes('/src/truth/earth/model.ts'))).toBe(true);
+    expect((await moduleIdsFor('dev/strat.html')).some((id) => id.includes('/src/truth/strat/simulate.ts'))).toBe(true);
   });
 });

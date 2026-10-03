@@ -475,3 +475,47 @@ Open questions in §12.6 were accepted at their stated defaults.
 - **Dev tooling.** `tools/depcheck.ts` (import-graph checker, also a CLI), `tools/run-earth.ts` (sparkline table),
   `dev/earth.html` (Canvas debug page; deliberately outside `src/`, its own Vite entry, proven by the bundle test to
   be the *only* place truth is bundled).
+
+### M2 — as built (deviations from the plan above, and why)
+
+**Measured at the `standard` preset (64×64, 250 Myr, 2500 steps; all three tectonic templates):** Earth system ≈ 0.9 s,
+stratigraphy 10–13 s, 0.7–1.1 M layers, ≈ 80–190 MB of typed arrays (peak RSS ≈ 450 MB during generation, before trimming).
+Comfortably inside the D14 budget (≤ 250 MB, ≤ 45 s), so 64×64 stays the default and the "layer-merge in reserve" is
+already in use (see below).
+
+- **Layer record.** Layers store `formed` (step index), `ageMean` and `ageSigma` (mass-weighted, after mixing) rather than
+  `stepTop/stepBase`: a bioturbated layer is a blend of times, so a mean ± spread is the honest description. Hiatus is an explicit
+  `HIATUS` flag plus a `gap` count of skipped steps, not something inferred from ages.
+- **Bioturbation** is the Berger–Heath mixed layer exactly as designed (`strat/column.ts`). The mixed layer is *frozen* into
+  rock whenever deposition stops or erosion bites (an exposed surface lithifies). `lmix` is in solid-rock metres.
+- **Layer merging is on by default** (design had it in reserve): adjacent same-facies *background* beds are merged up to 10 m
+  of solid rock. Refined-step beds and the two steps after them carry `KEEP` and never merge, so event smears survive.
+  Without merging: 2.4–2.9 M layers / ~490 MB; with 2 m: same order; with 10 m: 0.7–1.1 M.
+- **Compaction** is computed from per-column lithology totals (mud, sand, carbonate, evaporite, organic) with
+  Sclater–Christie curves — exact bookkeeping under deposition, erosion and merging, O(1) per step. Layerwise compaction
+  (`layerThickness`) is for the observation layer / viewers.
+- **Isostasy** is a single factor: surface = basement + (1 − 0.35) × compacted sediment.
+- **Landscape.** D8 routing with *no* pit filling: closed depressions are sinks that fill and then spill over time.
+  Detachment-limited stream power for land with slope above 0.0015, floodplain deposition below it. Sediment is split
+  into sand and mud; sand drops near the river mouth, mud travels on; marine deposition is capped by accommodation
+  (sediment cannot fill above sea level), which is what makes shorelines prograde. The map is a closed system.
+- **Facies.** Eight facies as designed. A facies jump the time step cannot resolve (not a Walther neighbour) is stamped
+  `DROWN` (condensed surface) instead of being passed off as continuous. Test: continuous successions obey the adjacency
+  matrix (< 2 % exceptions) and an imposed sea-level cycle leaves transgressive–regressive packages.
+- **Carbonates.** Shelf factory (`strat/factory.ts`: light curve × temperature × saturation × terrigenous poisoning) with a
+  20 % cool-water floor (without it, high-latitude shelves drowned and every basin turned into pelagic ooze); pelagic rain
+  above the Earth system's CCD; evaporites in arid, restricted shallow cells and playa sinks.
+- **Exhumation** (last ≤ 35 Myr of regional uplift) is a parameter (`exhumeMyr`, 0 = off). Tests turn it off so the record
+  survives to be inspected; real worlds keep it on, which is what exposes old rock at the surface.
+- **Tracer deposition** already uses the Earth-system history (δ13C, δ18O with latitude-dependent temperature, δ15N with a local
+  river-mouth nutrient anomaly, Hg, charcoal vs the O₂-controlled fire index, pyrite-S vs euxinia, ⁶⁰Fe, persistent organics)
+  and has a `StratSource` hook for event deposits (ejecta, ash, tsunamites) — M4 plugs into it. An end-to-end test shows a
+  clathrate pulse arriving as a > 1.5 ‰ negative δ13C excursion in shelf carbonates.
+- **Accounting.** `tally` records everything delivered to and removed from the columns; tests check every tracer balances,
+  that routing conserves clastic mass (delivered = eroded + basement + dust), and that the erosion log accounts for every
+  metre of rock removed. `envHistory` keeps the facies of every cell at every step (10 MB) for the reveal.
+- **Not yet modelled** (candidates for M4/M8): wave-base/ravinement erosion of the shelf, turbidites, hillslope diffusion,
+  ash falls, impacts, tsunamites, and the biosphere's effect on bioturbation depth and organic burial (M3).
+- **Known rough edges.** Foreland and intracratonic templates still make carbonate-heavy columns up to ~10 km thick in the
+  deepest spot; glacial diamict can dominate a long icehouse at high palaeolatitude. Both are tuning, not structure, and are
+  on the M8 balancing list.

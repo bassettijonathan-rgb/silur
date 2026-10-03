@@ -12,8 +12,9 @@ See **[DESIGN.md](DESIGN.md)** for the model, architecture and milestone plan.
 | milestone | state |
 |---|---|
 | M1 Earth-system box models (carbon cycle, climate, ice, sea level, O₂/P) | done |
-| M2 Sedimentation / erosion / bioturbation on the grid | next |
-| M3–M8 | planned (see DESIGN.md §11) |
+| M2 Sedimentation / erosion / bioturbation on the grid | done |
+| M3 Biosphere: clades, extinction selectivity, taphonomy | next |
+| M4–M8 | planned (see DESIGN.md §11) |
 
 ## Commands
 
@@ -22,8 +23,9 @@ npm install
 npm test                       # vitest: science validation + architecture tests
 npm run typecheck && npm run lint
 npx tsx tools/run-earth.ts alpha 250 100   # print an Earth-system run (seed, Myr, step kyr)
+npx tsx tools/run-strat.ts alpha standard foreland   # Earth + strata profile (seed, preset, template)
 npx tsx tools/depcheck.ts      # check the layer boundaries
-npm run dev                    # game shell;  /dev/earth.html = Earth-system debug plots (developer only)
+npm run dev                    # game shell;  /dev/earth.html and /dev/strat.html = debug plots / map+column viewer (developer only)
 ```
 
 ## Layout
