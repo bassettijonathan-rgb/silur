@@ -19,6 +19,9 @@ function forcedToTruth(e: ForcedEvent): Omit<TruthEvent, 'id' | 'parents'> {
     case 'clathrate':
       return { type: 'clathrate', cls: 'forced', ageMa: [e.ageMa, e.ageMa - e.onsetKyr / 1000], magnitude: e.massPg, cause: 'clathrate',
         params: { massPg: e.massPg, onsetKyr: e.onsetKyr } };
+    case 'aridification':
+      return { type: 'aridification', cls: 'forced', ageMa: [e.ageMa, e.ageMa - e.durationKyr / 1000], magnitude: e.sedMult, cause: 'tectonic',
+        params: { durationKyr: e.durationKyr, sedMult: e.sedMult, coverLoss: e.coverLoss, habitat: e.habitat, predation: e.predation } };
     case 'supernova':
       return { type: 'supernova', cls: 'forced', ageMa: [e.ageMa, e.ageMa - e.durationKyr / 1000], magnitude: e.ozoneLoss, cause: 'supernova',
         params: { ozoneLoss: e.ozoneLoss, durationKyr: e.durationKyr, fe60: e.fe60 } };

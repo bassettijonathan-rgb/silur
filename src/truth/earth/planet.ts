@@ -231,7 +231,7 @@ export function samplePlanet(rng: Rng): PlanetParams {
   // so the *baseline* deep-ocean oxygenation does not depend on the sampled mixing rate.
   const mixKgYr = r.range(1.0e18, 2.2e18);
   const mixScale = mixKgYr / EARTH_LIKE.mixKgYr;
-  return {
+  const p: PlanetParams = {
     ...EARTH_LIKE,
     mixKgYr,
     exportOrg0: EARTH_LIKE.exportOrg0 * mixScale,
@@ -250,4 +250,9 @@ export function samplePlanet(rng: Rng): PlanetParams {
     iceTempNoPolar: r.range(6, 10),
     iceTempPolarBonus: r.range(9, 15),
   };
+  // The baseline needs shelf carbonate burial to make up the difference between total carbonate burial (= Fsil + Fc)
+  // and pelagic burial; keep pelagic burial under 60 % of the total whatever the sampled fluxes.
+  const fracAbove0 = 1 / (1 + Math.exp(-(p.ccd0 - p.hypsZ0) / p.hypsW));
+  p.pelagicBurialMax = Math.min(p.pelagicBurialMax, (0.6 * (p.volc0 + p.carbW0)) / (p.rainCarb0 * fracAbove0));
+  return p;
 }

@@ -10,10 +10,10 @@ import { MapLayer, cellAt, drawMap } from './mapView';
 
 const STAGE_LABEL: Record<Stage, string> = {
   planet: 'sampling a planet and its history of catastrophes…', earth: 'running the carbon cycle and climate…',
-  biosphere: 'evolving life…', strata: 'laying down the rocks…', catalog: 'cataloguing…',
+  biosphere: 'evolving life…', strata: 'laying down the rocks…', catalog: 'cataloguing…', solvability: 'checking that the puzzle is fair…',
 };
-const STAGE_START: Record<Stage, number> = { planet: 0, earth: 0.02, biosphere: 0.1, strata: 0.15, catalog: 0.98 };
-const STAGE_SPAN: Record<Stage, number> = { planet: 0.02, earth: 0.08, biosphere: 0.05, strata: 0.83, catalog: 0.02 };
+const STAGE_START: Record<Stage, number> = { planet: 0, earth: 0.02, biosphere: 0.1, strata: 0.15, catalog: 0.88, solvability: 0.9 };
+const STAGE_SPAN: Record<Stage, number> = { planet: 0.02, earth: 0.08, biosphere: 0.05, strata: 0.73, catalog: 0.02, solvability: 0.1 };
 
 export class App {
   private selected = -1;

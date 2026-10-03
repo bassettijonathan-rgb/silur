@@ -16,7 +16,9 @@ describe('worker host + client', () => {
     const { client, log } = loopback();
     const stages: Stage[] = [];
     const info = await client.generate(config, (s) => { if (stages[stages.length - 1] !== s) stages.push(s); });
-    expect(stages).toEqual(['planet', 'earth', 'biosphere', 'strata', 'catalog']);
+    // (a redrawn world repeats the cycle) — the stages first appear in pipeline order and the last word is the fairness check
+    expect([...new Set(stages)]).toEqual(['planet', 'earth', 'biosphere', 'strata', 'catalog', 'solvability']);
+    expect(stages[stages.length - 1]).toBe('solvability');
     expect(info.nx).toBe(12);
     expect(info.budget).toBe(100);
 

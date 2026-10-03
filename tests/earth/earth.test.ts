@@ -266,6 +266,17 @@ describe('clathrate release → PETM-like hyperthermal', () => {
   });
 });
 
+describe('sampled planets', () => {
+  it('every sampled planet calibrates to a steady state (no seed can crash world generation)', () => {
+    for (let k = 0; k < 150; k++) {
+      const planet = samplePlanet(new Rng(`calib-${k}`));
+      const c = calibrate(planet);
+      expect(c.y0.every(Number.isFinite)).toBe(true);
+      expect(c.base.kShelf).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('full-length runs', () => {
   it('are deterministic: same seed -> bit-identical output', () => {
     const go = () => {

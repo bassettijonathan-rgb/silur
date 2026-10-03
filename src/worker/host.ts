@@ -5,14 +5,29 @@
 import { WorldConfig } from '../shared/config';
 import { ClientMessage, ServerMessage } from '../shared/protocol';
 import { ObservationService } from '../observation/service';
-import { Progress, World, generateWorld } from '../truth/world';
+import { generateSolvableWorld, Solvability } from '../observation/solvability/gate';
+import { Progress, World } from '../truth/world';
 
 export type WorldFactory = (config: WorldConfig, progress: Progress) => World;
 
+/** The real factory: draw a world and make sure the ideal observer finds the puzzle fair (redrawing up to maxTries times). */
+export function solvableFactory(host: { lastSolvability: Solvability | null }): WorldFactory {
+  return (config, progress) => {
+    const { world, solvability } = generateSolvableWorld(config, progress);
+    host.lastSolvability = solvability;
+    return world;
+  };
+}
+
 export class WorkerHost {
   private service: ObservationService | null = null;
+  /** Sealed until the reveal (M7). */
+  lastSolvability: Solvability | null = null;
+  private readonly makeWorld: WorldFactory;
 
-  constructor(private readonly makeWorld: WorldFactory = generateWorld) {}
+  constructor(makeWorld?: WorldFactory) {
+    this.makeWorld = makeWorld ?? solvableFactory(this);
+  }
 
   handle(msg: ClientMessage, send: (m: ServerMessage) => void): void {
     switch (msg.kind) {

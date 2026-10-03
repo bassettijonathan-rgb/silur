@@ -15,8 +15,9 @@ See **[DESIGN.md](DESIGN.md)** for the model, architecture and milestone plan.
 | M2 Sedimentation / erosion / bioturbation on the grid | done |
 | M3 Biosphere: clades, extinction selectivity, taphonomy | done |
 | M4 Natural catastrophes + playable vertical slice (map → drill → core → assays) | done |
-| M5 Hidden civilization, mimicry, ideal-observer solvability check | next |
-| M6–M8 | planned (see DESIGN.md §11) |
+| M5 Hidden civilization, mimicry, ideal-observer solvability gate | done |
+| M6 Full investigation UI: outcrops, dating, fossils, correlation, notebook | next |
+| M7–M8 | planned (see DESIGN.md §11) |
 
 ## Commands
 
@@ -28,6 +29,8 @@ npx tsx tools/run-earth.ts alpha 250 100   # print an Earth-system run (seed, My
 npx tsx tools/run-strat.ts alpha standard foreland   # Earth + strata profile (seed, preset, template)
 npx tsx tools/run-world.ts alpha standard             # whole world: truth catalog + timings
 npx tsx tools/run-bio.ts alpha standard             # diversity curve + extinction selectivity
+npx tsx tools/build-signatures.ts 200               # rebuild the ideal observer's signature library (needed after physics changes)
+npx tsx tools/probe-gate.ts 20 dev                  # how often the solvability gate passes and how the ideal observer does
 npx tsx tools/depcheck.ts      # check the layer boundaries
 npm run dev                    # the game (worker generates a world in ~20 s);  /dev/earth.html and /dev/strat.html = debug plots / map+column viewer (developer only)
 ```

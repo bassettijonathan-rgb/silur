@@ -5,7 +5,7 @@
 import type { WorldConfig } from './config';
 import type { ProxyId, ProxyInfo } from './proxies';
 
-export type Stage = 'planet' | 'earth' | 'biosphere' | 'strata' | 'catalog';
+export type Stage = 'planet' | 'earth' | 'biosphere' | 'strata' | 'catalog' | 'solvability';
 
 export interface PublicInfo {
   nx: number;

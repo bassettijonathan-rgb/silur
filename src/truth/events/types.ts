@@ -9,7 +9,8 @@
 export type EventType =
   | 'lip' | 'bolide' | 'clathrate' | 'supernova' //          forced natural events
   | 'glaciation' | 'oae' | 'hyperthermal' | 'extinction' //   emergent episodes found by the segmenter
-  | 'civilization' | 'terraform' | 'probe'; //                hidden agents (M5+)
+  | 'aridification' //                                        forced climate/tectonic pulse (natural mimic of land-use change)
+  | 'civilization' | 'terraform' | 'probe'; //                hidden agents
 
 export type Cause = 'lip' | 'bolide' | 'clathrate' | 'supernova' | 'civilization' | 'terraform' | 'probe' | 'tectonic' | 'unknown_natural';
 
@@ -35,7 +36,9 @@ export interface BolideEvent { kind: 'bolide'; ageMa: number; diameterKm: number
 export interface ClathrateEvent { kind: 'clathrate'; ageMa: number; massPg: number; onsetKyr: number }
 export interface SupernovaEvent { kind: 'supernova'; ageMa: number; ozoneLoss: number; durationKyr: number; fe60: number }
 export interface AshEvent { kind: 'ash'; ageMa: number; volumeKm3: number; xKm: number; yKm: number; windDeg: number }
-export type ForcedEvent = LipEvent | BolideEvent | ClathrateEvent | SupernovaEvent;
+/** A natural pulse of erosion and vegetation loss (uplift, monsoon failure): imitates the land-use signature of a civilization. */
+export interface AridificationEvent { kind: 'aridification'; ageMa: number; durationKyr: number; sedMult: number; coverLoss: number; habitat: number; predation: number }
+export type ForcedEvent = LipEvent | BolideEvent | ClathrateEvent | SupernovaEvent | AridificationEvent;
 
 /** Fraction of the time interval [a1, a0] (Ma, a0 older) during which a pulse that starts at `startMa` and lasts `durYr` is on. */
 export function pulseFractionInStep(startMa: number, durYr: number, a0: number, a1: number): number {

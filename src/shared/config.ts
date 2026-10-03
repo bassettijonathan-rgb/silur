@@ -4,7 +4,7 @@
  */
 
 /** Bump when a change to the model would alter generated worlds. Saved worlds warn on mismatch. */
-export const MODEL_VERSION = '0.1.0-m1';
+export const MODEL_VERSION = '0.5.0-m5';
 
 export interface DifficultyParams {
   /** 0 (poor) .. 1 (excellent): erosion rate, bioturbation depth, diagenesis. */
@@ -21,6 +21,10 @@ export interface DifficultyParams {
   solvabilityAUC: number;
   /** Fraction of worlds allowed to fail the solvability gate ("murky" worlds) (M5). */
   murkyFraction: number;
+  /** The ideal observer must call "civilization present" with at least this probability (or absent with at most 1 − this) for a world to be accepted. */
+  worldPosteriorMin: number;
+  /** How many times the generator may redraw a world (same seed, different attempt) to pass the gate. */
+  maxTries: number;
   /** Player budget, in cost units. */
   budget: number;
 }
@@ -52,6 +56,8 @@ export const DEFAULT_DIFFICULTY: DifficultyParams = {
   civBaseRate: 0.4,
   solvabilityAUC: 0.85,
   murkyFraction: 0,
+  worldPosteriorMin: 0.6,
+  maxTries: 4,
   budget: 100,
 };
 

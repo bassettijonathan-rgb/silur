@@ -43,7 +43,7 @@ export function computeStressors(plan: TimePlan, earth: EarthHistory, baselineTa
     // only acute darkness (dust/soot) counts; a thin chronic volcanic aerosol veil dims the planet but is not lethal
     I[S.light][s] = clamp(f.lightReduction, 0, 1);
     I[S.uv][s] = clamp(f.ozoneLoss, 0, 1);
-    I[S.fire][s] = clamp(0.1 * f.fireIgnition + 0.05 * f.soot, 0, 1);
+    I[S.fire][s] = clamp(0.02 * f.fireIgnition + 0.01 * f.soot, 0, 1);
     // loss of shelf habitat area relative to the running mean (50 % loss = full strength)
     I[S.shelf][s] = clamp((2 * (areaRun - E.shelfArea[s])) / areaRun, 0, 1.5);
     I[S.harvest][s] = clamp(f.harvestPressure, 0, 1);

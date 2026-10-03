@@ -590,3 +590,40 @@ already in use (see below).
   sedimentary cover needs to be thicker and more continuous for good play; (2) LIPs and big impacts are common enough that some worlds have 4–5 of them;
   (3) the 15 % remote-sensing error looks like salt-and-pepper noise; spatially correlated error would be kinder; (4) no OAE appears unless a LIP/clathrate
   drives one (intended, but rare in short runs).
+
+### M5 — as built (deviations from the plan above, and why)
+
+**Measured:** a gated standard world takes ≈ 31 s (≈ 22 s generation + ≈ 9 s ideal-observer assessment; the gate passed the first draw in 3 of 3 standard
+and 14 of 20 dev worlds, mean 1.45 draws); the library holds 200 mini-world samples per cause class (105 KB). 182 tests.
+
+- **The civilization** (`truth/agents/civilization.ts`) is an `Agent` that returns ordinary `Forcing` and TimePlan windows: fossil-carbon burning (1–8·10³ Pg C at
+  δ13C ≈ −25 ‰, logistic rise → abrupt collapse), Hg, fire/soot, persistent organics, fertiliser P with a δ15N that can go either way (−2…+12 ‰), land-use
+  channels (erosion multiplier, cover loss, habitat conversion) that persist 1–3 kyr after the collapse, and harvest pressure. Duration lognormal (median 1.5 kyr,
+  0.3–8 kyr). Step averages are integrated numerically (24–4000 samples) so total carbon is exact for any step length. Probability `civBaseRate` per world.
+- **No unique marker (tested):** every channel the civilization uses is also used by some natural event. That needed two additions: impacts now have a `soot`
+  channel, and the natural **aridification pulse** (new forced event, 20–300 kyr of faster erosion, cover loss, habitat loss and a predation-like
+  `harvestPressure`) mimics land use. The hazard/stressor model decides who dies; the agent just supplies pressure.
+- **Mimics** (`events/mimics.ts`): a registry of eight agent-signature/natural-look-alike pairs with their shared proxies, and `injectMimics` adding
+  Poisson(3·`mimicFrequency`) look-alikes to *every* world: small fast clathrate releases, short thermogenic LIP bursts (δ13C −12…−28 ‰, Hg ×4–25), 3–9 km impacts
+  (fire, winter) and aridification.
+- **Calibration fixes found on the way** (all affect earlier milestones): mercury background flux was 10⁵ times too small (now 5 µg m⁻² yr⁻¹ → ~20 ppb in shelf
+  mud); fire lethality was calibrated for a one-year fire and annihilated land life under a kyr-long civilization (τ_fire 30 → 1000 yr, intensity ×0.2); harvest τ
+  3000 → 1500 yr; and a latent crash — ~2 % of sampled planets could not calibrate (pelagic burial exceeded total carbonate burial) — is fixed and tested over 150 planets.
+- **Ideal observer** (`observation/solvability/`): 14 rock-record features measured as an unlimited-budget geologist would (carbon-isotope excursion from carbonate
+  or organic matter, δ18O, Hg/TOC, Ir, charcoal, persistent organics, δ15N, terrigenous fraction, ash, excursion width, and extinction selectivity among
+  fossilisable species), a Gaussian naive-Bayes model fitted to the library, tempered ×0.5 for correlated features. Mini-worlds (10×10, 16 Myr, one event, real
+  pipeline, 0.13 s each) fill the library via `tools/build-signatures.ts`; `signatures.json` records `modelVersion` and a test fails if it is stale.
+- **Population test:** civilization vs. mimic worlds (60 pairs, independent seeds): joint AUC ≈ 0.9 (≥ 0.85 required, < 0.99 required), **every single feature < 0.9**
+  (widest: excursion width 0.88, extinction selectivity 0.80), and every mimic class overlaps the civilization in ≥ 3 features. Without the calibration fixes above the
+  separation was 0.98–1.00 because the civilization wiped out all land life.
+- **Gate (changed from the plan):** the plan required the true-cause posterior ≥ 0.6 for *every* major anomaly; in real worlds (≈ 20 forced events, overlapping
+  windows) that rejected 13 of 16 worlds. The gate now asks the headline question: the ideal observer must call "civilization present" with p ≥ `worldPosteriorMin`
+  (0.6) when there is one, and p ≤ 0.4 when there is not (noisy-OR over major anomalies with the world's prior mix of causes). On 40 full worlds the ideal observer
+  gets this right 72 % of the time (AUC 0.82), so ≈ 70 % of draws pass; failures are mostly civilizations erased by erosion/uplift or buried among look-alikes — "unsolvable
+  in principle". Rejected worlds are redrawn (`attempt` salts the RNG, so the accepted world is still a pure function of the seed), up to `maxTries` (4), then flagged
+  murky; `murkyFraction` deliberately leaves some worlds murky. **Selection effect:** accepted worlds are, by construction, ones the ideal observer gets right.
+  `minTruePosterior` over major anomalies is reported but no longer gates.
+- **Worker:** the default world factory is now `generateSolvableWorld`; the verdict is kept in the host (`lastSolvability`) until the reveal (M7). New stage `solvability`.
+- **Known limits:** (1) the ideal observer reads rock features through the truth tracers (noise-free) — it bounds a perfect player, not a real one; (2) its power stems from
+  14 features; if a human ever beats it a feature is missing; (3) mini-world libraries do not include confounding neighbours, which is why full-world accuracy (72 %) is
+  lower than the mini-world AUC suggests; (4) the redraw loop makes standard-world generation 31 s typical, ≈ 60–90 s worst case (the progress bar restarts per draw).

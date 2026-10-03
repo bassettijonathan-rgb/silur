@@ -59,7 +59,7 @@ export interface StratParams {
 
   // ---- trace fluxes
   charcoalFlux: number; // g m⁻² yr⁻¹ at fire index 1
-  hgFlux: number; //       µg m⁻² yr⁻¹ background
+  hgFlux: number; //       µg m⁻² yr⁻¹ background (modern atmospheric deposition ≈ 5; ~20 ppb in 50 m/Myr shelf mud)
   irDetrital: number; //   ng per g of detrital clastic
   irCarbonate: number; //  ng per g of carbonate
   irCosmicFlux: number; // ng m⁻² yr⁻¹ cosmic dust
@@ -112,7 +112,7 @@ export const DEFAULT_STRAT: StratParams = {
   },
 
   charcoalFlux: 2e-4,
-  hgFlux: 5e-5,
+  hgFlux: 5,
   irDetrital: 0.03,
   irCarbonate: 0.004,
   irCosmicFlux: 0.2,

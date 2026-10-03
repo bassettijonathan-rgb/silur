@@ -12,8 +12,11 @@ import { runBiosphere, BioWorld } from './bio/diversify';
 import { generateSlowDrivers } from './earth/drivers';
 import { PlanetParams, samplePlanet } from './earth/planet';
 import { EarthHistory, runEarthSystem } from './earth/run';
+import { Agent } from './agents/types';
+import { Civilization, drawCivilization } from './agents/civilization';
 import { buildCatalog } from './events/catalog';
 import { eventForcing } from './events/forcing';
+import { Forcing, addForcing } from '../shared/forcing';
 import { Schedule, scheduleEvents } from './events/schedule';
 import { EventSource } from './events/source';
 import { AshEvent, ForcedEvent, TruthEvent } from './events/types';
@@ -29,6 +32,8 @@ export interface World {
   strat: StratWorld;
   forced: ForcedEvent[];
   ashes: AshEvent[];
+  /** Hidden agents (empty in worlds without a civilization). */
+  agents: Agent[];
   catalog: TruthEvent[];
 }
 
@@ -38,24 +43,39 @@ export interface GenerateOptions {
   /** Use these events instead of drawing them (scenario worlds, tests). */
   schedule?: Schedule;
   /** Fix the tectonic template / exhumation phase / palaeolatitude (scenario worlds, tests). */
+  /** Force a civilization on/off (default: drawn with probability `difficulty.civBaseRate`) or pass its parameters. */
+  civilization?: boolean | import('./agents/civilization').CivilizationParams;
+  /** Different draw of the same seed (used by the solvability gate; 0 = first draw). */
+  attempt?: number;
   template?: TemplateName;
   exhumeMyr?: number;
   latitudeDeg?: number;
 }
 
 export function generateWorld(config: WorldConfig, onProgress: Progress = () => undefined, options: GenerateOptions = {}): World {
-  const rng = new Rng(config.seed);
+  const rng = new Rng(options.attempt ? `${config.seed}#${options.attempt}` : config.seed);
   const mapHalfKm = (Math.max(config.grid.nx, config.grid.ny) * config.grid.cellKm) / 2;
 
   onProgress('planet', 0);
   const planet = samplePlanet(rng);
-  const drawn = scheduleEvents(rng, config.durationMyr, config.difficulty.eventDensity, mapHalfKm);
+  const drawn = scheduleEvents(rng, config.durationMyr, config.difficulty.eventDensity, mapHalfKm, {}, config.difficulty.mimicFrequency);
   const schedule = options.schedule ?? drawn;
-  const plan = buildTimePlan({ durationMyr: config.durationMyr, baseDtYr: config.baseDtYr, windows: schedule.windows, maxSteps: config.maxSteps });
+  // hidden agents (design §4.9): a civilization exists with probability civBaseRate unless forced
+  const agents: Agent[] = [];
+  const rc = rng.fork('civilization');
+  const wantCiv = options.civilization === undefined ? rc.next() < config.difficulty.civBaseRate : options.civilization !== false;
+  if (wantCiv) {
+    const params = typeof options.civilization === 'object' ? options.civilization : drawCivilization(rc.range(1.5, config.durationMyr - 3), rc);
+    agents.push(new Civilization(params));
+  }
+  const windows = [...schedule.windows, ...agents.flatMap((a) => a.windows())];
+  const plan = buildTimePlan({ durationMyr: config.durationMyr, baseDtYr: config.baseDtYr, windows, maxSteps: config.maxSteps });
   const drivers = generateSlowDrivers(plan, planet, rng);
 
   onProgress('earth', 0);
-  const earth = runEarthSystem({ planet, plan, drivers, forcing: eventForcing(schedule.forced) });
+  const natural = eventForcing(schedule.forced);
+  const forcing = (a0: number, a1: number): Forcing => agents.reduce((f, a) => addForcing(f, a.forcing(a0, a1)), natural(a0, a1));
+  const earth = runEarthSystem({ planet, plan, drivers, forcing });
 
   onProgress('biosphere', 0);
   const bio = runBiosphere({ plan, earth, rng });
@@ -71,9 +91,9 @@ export function generateWorld(config: WorldConfig, onProgress: Progress = () => 
   });
 
   onProgress('catalog', 0);
-  const catalog = buildCatalog(plan, earth, bio, schedule.forced);
+  const catalog = buildCatalog(plan, earth, bio, schedule.forced, agents.map((a) => ({ ...a.truth(), id: -1, parents: [] })));
   onProgress('catalog', 1);
-  return { config, planet, plan, earth, bio, strat, forced: schedule.forced, ashes: schedule.ashes, catalog };
+  return { config, planet, plan, earth, bio, strat, forced: schedule.forced, ashes: schedule.ashes, agents, catalog };
 }
 
 /** A fingerprint of a world for determinism tests and save/load version checks. */

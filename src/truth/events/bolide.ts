@@ -47,6 +47,7 @@ export function bolideForcing(e: BolideEvent, a0: number, a1: number): Forcing {
   f.ozoneLoss = avgOverStep(0.2 * g, e.ageMa, 5, a0, a1);
   f.acidPulse = avgOverStep(0.5 * g, e.ageMa, 1, a0, a1);
   f.fireIgnition = avgOverStep(3 * g, e.ageMa, 1, a0, a1);
+  f.soot = avgOverStep(20 * g, e.ageMa, 1, a0, a1);
   return f;
 }
 

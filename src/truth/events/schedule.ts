@@ -8,7 +8,9 @@ import { makeAsh, ashWindows } from './ash';
 import { bolideWindows, drawDiameter, makeBolide } from './bolide';
 import { clathrateWindows, makeClathrate } from './clathrate';
 import { lipWindows, makeLip } from './lip';
+import { injectMimics } from './mimics';
 import { makeSupernova, supernovaWindows } from './supernova';
+import { aridificationWindows, makeAridification } from './aridification';
 import { AshEvent, ForcedEvent } from './types';
 
 export interface EventRates {
@@ -18,12 +20,13 @@ export interface EventRates {
   clathrate: number;
   supernova: number;
   ash: number;
+  aridification: number;
   /** Extra explosive eruptions per Myr during a LIP. */
   ashPerLipMyr: number;
 }
 
 export const DEFAULT_RATES: EventRates = {
-  lip: 0.012, bolideGlobal: 0.012, bolideRegional: 0.03, clathrate: 0.012, supernova: 0.004, ash: 0.4, ashPerLipMyr: 2,
+  lip: 0.012, bolideGlobal: 0.012, bolideRegional: 0.03, clathrate: 0.012, supernova: 0.004, ash: 0.4, aridification: 0.01, ashPerLipMyr: 2,
 };
 
 export interface Schedule {
@@ -33,7 +36,7 @@ export interface Schedule {
 }
 
 export function scheduleEvents(
-  rng: Rng, durationMyr: number, eventDensity: number, mapHalfKm: number, rates: Partial<EventRates> = {},
+  rng: Rng, durationMyr: number, eventDensity: number, mapHalfKm: number, rates: Partial<EventRates> = {}, mimicFrequency = 0,
 ): Schedule {
   const R = { ...DEFAULT_RATES, ...rates };
   const r = rng.fork('events');
@@ -52,6 +55,10 @@ export function scheduleEvents(
   for (let i = 0; i < count(R.clathrate, 'cl'); i++) forced.push(makeClathrate(onset(rc, 1.3), rc));
   const rs = r.fork('supernova');
   for (let i = 0; i < count(R.supernova, 'sn'); i++) forced.push(makeSupernova(onset(rs, 0.1), rs));
+
+  const rr = r.fork('arid');
+  for (let i = 0; i < count(R.aridification, 'ar'); i++) forced.push(makeAridification(onset(rr, 0.5), rr));
+  forced.push(...injectMimics(rng, durationMyr, mimicFrequency, mapHalfKm));
 
   const ra = r.fork('ash');
   for (let i = 0; i < count(R.ash, 'ash'); i++) ashes.push(makeAsh(ra.range(0.5, durationMyr - 0.5), ra, mapHalfKm));
@@ -75,6 +82,7 @@ export function makeSchedule(forced: ForcedEvent[], ashes: AshEvent[] = []): Sch
     if (e.kind === 'lip') windows.push(...lipWindows(e));
     else if (e.kind === 'bolide') windows.push(...bolideWindows(e));
     else if (e.kind === 'clathrate') windows.push(...clathrateWindows(e));
+    else if (e.kind === 'aridification') windows.push(...aridificationWindows(e));
     else windows.push(...supernovaWindows(e));
   }
   for (const a of ashes) windows.push(...ashWindows(a));

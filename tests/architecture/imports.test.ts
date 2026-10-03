@@ -48,3 +48,20 @@ describe('depcheck catches violations', () => {
     expect(refs.map((r) => r.specifier).sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
   });
 });
+
+// Design §4.8: nothing outside events/ and agents/ may know which kind of event or agent is acting.
+import fs from 'node:fs';
+import { listTs } from '../../tools/depcheck';
+describe('no event-type branching outside events/ and agents/', () => {
+  it('earth, geo, strat and bio never mention an event kind', () => {
+    const re = /['"](civilization|bolide|clathrate|supernova|aridification|terraform)['"]/;
+    const offenders: string[] = [];
+    for (const dir of ['earth', 'geo', 'strat', 'bio']) {
+      for (const f of listTs(path.join(root, 'src/truth', dir))) {
+        const lines = fs.readFileSync(f, 'utf8').split('\n');
+        lines.forEach((l, i) => { if (re.test(l) && !l.trim().startsWith('//') && !l.trim().startsWith('*')) offenders.push(`${path.relative(root, f)}:${i + 1}: ${l.trim()}`); });
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});
