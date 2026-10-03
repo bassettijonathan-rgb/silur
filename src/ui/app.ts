@@ -14,6 +14,9 @@ import { coreDepthAt, drawCore, legend } from './coreView';
 import { el } from './dom';
 import { MapLayer, cellAt, drawMap } from './mapView';
 import { renderNotebook } from './notebookView';
+import { renderReveal } from './revealView';
+import { renderSubmit } from './submitView';
+import { recordGame, loadHistory } from '../game/history';
 
 const STAGE_LABEL: Record<Stage, string> = {
   planet: 'sampling a planet and its history of catastrophes…', earth: 'running the carbon cycle and climate…',
@@ -22,7 +25,7 @@ const STAGE_LABEL: Record<Stage, string> = {
 const STAGE_START: Record<Stage, number> = { planet: 0, earth: 0.02, biosphere: 0.1, strata: 0.15, catalog: 0.88, solvability: 0.9 };
 const STAGE_SPAN: Record<Stage, number> = { planet: 0.02, earth: 0.08, biosphere: 0.05, strata: 0.73, catalog: 0.02, solvability: 0.1 };
 const AUTOSAVE_KEY = 'silur-autosave';
-type Tab = 'core' | 'correlate' | 'age' | 'notebook';
+type Tab = 'core' | 'correlate' | 'age' | 'notebook' | 'submit' | 'reveal';
 
 export class App {
   private selected = -1;
@@ -52,12 +55,12 @@ export class App {
   private readonly surveyBtn = el('button', {}, 'Survey outcrop');
   private readonly coreList = el('div', { class: 'cores' });
 
-  private readonly tabs = (['core', 'correlate', 'age', 'notebook'] as Tab[]).map((t) => {
-    const b = el('button', { class: 'tab' }, { core: 'Core', correlate: 'Correlate', age: 'Age model', notebook: 'Notebook' }[t]);
+  private readonly tabs = (['core', 'correlate', 'age', 'notebook', 'submit', 'reveal'] as Tab[]).map((t) => {
+    const b = el('button', { class: 'tab' }, { core: 'Core', correlate: 'Correlate', age: 'Age model', notebook: 'Notebook', submit: 'Submit', reveal: 'Reveal' }[t]);
     b.addEventListener('click', () => { this.tab = t; this.render(); });
     return [t, b] as const;
   });
-  private readonly panels: Record<Tab, HTMLElement> = { core: el('div'), correlate: el('div'), age: el('div'), notebook: el('div') };
+  private readonly panels: Record<Tab, HTMLElement> = { core: el('div'), correlate: el('div'), age: el('div'), notebook: el('div'), submit: el('div'), reveal: el('div') };
 
   // core tab
   private readonly core = el('canvas', { width: '860', height: '560' });
@@ -214,6 +217,8 @@ export class App {
         if (first) this.selectCore(first);
       });
       for (const w of warnings) this.say(w, true);
+      const r = this.session.result;
+      if (r) recordGame(storage(), { seed: r.reveal.seed, at: r.reveal.worldHash, total: r.score.totals.total, headlineBits: r.score.totals.headline, statements: r.score.calibration });
       this.say('Game restored.');
     } catch (e) { this.say(`could not load: ${(e as Error).message}`, true); }
   }
@@ -310,6 +315,21 @@ export class App {
     } catch (e) { this.say(msg(e), true); }
   }
 
+  // ---------- submission ----------
+
+  private async submit(): Promise<void> {
+    try {
+      const r = await this.session.submit();
+      recordGame(storage(), {
+        seed: r.reveal.seed, at: r.reveal.worldHash, total: r.score.totals.total, headlineBits: r.score.totals.headline,
+        statements: r.score.calibration,
+      });
+      this.say(`Submitted: ${r.score.totals.total.toFixed(1)} bits.`);
+      this.tab = 'reveal';
+      this.afterChange();
+    } catch (e) { this.say(msg(e), true); }
+  }
+
   // ---------- correlation ----------
 
   private corrClick(ev: MouseEvent): void {
@@ -362,14 +382,24 @@ export class App {
   }
 
   private render(): void {
-    for (const [t, b] of this.tabs) b.classList.toggle('sel', t === this.tab);
+    const closed = this.session.result !== null;
+    for (const [t, b] of this.tabs) { b.classList.toggle('sel', t === this.tab); if (t === 'reveal') b.style.display = closed ? '' : 'none'; }
+    if (closed) for (const b of [this.drillBtn, this.surveyBtn, this.assayBtn, this.dateBtn, this.fossilBtn]) b.disabled = true;
     for (const [t, p] of Object.entries(this.panels)) p.style.display = t === this.tab ? '' : 'none';
     this.redrawMap();
     if (!this.session.info) return;
     if (this.tab === 'core') { this.redrawCore(); this.renderFossilList(); }
     else if (this.tab === 'correlate') this.redrawCorr();
     else if (this.tab === 'age') this.redrawAge();
-    else renderNotebook(this.panels.notebook, {
+    else if (this.tab === 'submit') {
+      if (closed) this.panels.submit.replaceChildren(el('div', { class: 'dim' }, 'Submitted. See the Reveal tab.'));
+      else renderSubmit(this.panels.submit, {
+        draft: () => this.session.draft, durationMyr: () => this.session.config!.durationMyr, budgetLeft: () => this.session.budget,
+        changed: () => { this.autosave(); this.render(); }, submit: () => void this.submit(),
+      });
+    } else if (this.tab === 'reveal') {
+      if (this.session.result) renderReveal(this.panels.reveal, this.session.result, this.session.draft, loadHistory(storage()));
+    } else renderNotebook(this.panels.notebook, {
       notebook: () => this.session.notebook,
       actionCount: () => this.session.actionCount,
       candidateEvidence: () => this.evidenceCandidates(),
@@ -403,6 +433,10 @@ export class App {
     this.fossilOut.replaceChildren(...fs.map((f) => el('div', {}, `${f.depthM} m (effort ${f.effort}): ` +
       (f.found.length ? f.found.map((m) => `${m.name} ×${m.count} [${m.habit}, ${m.size}]`).join(', ') : f.note ?? 'nothing recognisable'))));
   }
+}
+
+function storage(): { getItem(k: string): string | null; setItem(k: string, v: string): void } | null {
+  try { return localStorage; } catch { return null; }
 }
 
 function msg(e: unknown): string {

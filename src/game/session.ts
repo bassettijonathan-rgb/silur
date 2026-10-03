@@ -7,6 +7,9 @@ import {
 import { ProxyId } from '../shared/proxies';
 import { AgeModel, AgePoint } from './agemodel';
 import { CoreAges, Tie, TieEnd, TieKind, makeTie, propagateAges } from './correlation';
+import { RevealMessage } from '../shared/reveal';
+import { Submission } from '../shared/submission';
+import { emptyDraft } from './draft';
 import { Notebook } from './notebook';
 import { SAVE_VERSION, SaveFile, actionKey } from './save';
 
@@ -23,6 +26,9 @@ export class Session {
   readonly fossils = new Map<string, FossilResult>();
   ties: Tie[] = [];
   notebook = new Notebook();
+  draft: Submission = emptyDraft();
+  /** Set once the answer is in: the score and the revealed truth. The investigation is then closed. */
+  result: RevealMessage | null = null;
   private nextTie = 1;
   private readonly log = new Map<string, Action>();
 
@@ -31,6 +37,7 @@ export class Session {
   private reset(): void {
     this.cores.clear(); this.assays.clear(); this.dates.clear(); this.fossils.clear();
     this.ties = []; this.notebook = new Notebook(); this.nextTie = 1; this.log.clear();
+    this.draft = emptyDraft(); this.result = null;
   }
 
   async start(config: WorldConfig, onProgress: (stage: Stage, frac: number) => void): Promise<PublicInfo> {
@@ -124,6 +131,11 @@ export class Session {
   ages(): CoreAges { return propagateAges([...this.cores.keys()], this.datePoints(), this.ties); }
   ageModel(coreId: string): AgeModel | undefined { return this.ages().models.get(coreId); }
 
+  async submit(): Promise<RevealMessage> {
+    this.result = await this.client.submit(this.draft);
+    return this.result;
+  }
+
   // ---- save / load ----
 
   save(): SaveFile {
@@ -131,6 +143,7 @@ export class Session {
     return {
       format: 'silur-save', version: SAVE_VERSION, config: this.config, actions: [...this.log.values()],
       ties: this.ties.map((t) => ({ ...t })), notebook: this.notebook.toJSON(), nextTie: this.nextTie, budgetLeft: this.budget,
+      draft: this.draft, submitted: this.result !== null,
     };
   }
 
@@ -150,6 +163,8 @@ export class Session {
     this.ties = save.ties.map((t) => ({ ...t }));
     this.nextTie = save.nextTie;
     this.notebook = Notebook.fromJSON(save.notebook);
+    if (save.draft) this.draft = save.draft;
+    if (save.submitted) await this.submit();
     if (Number.isFinite(save.budgetLeft) && Math.abs(save.budgetLeft - this.budget) > 1e-6) {
       warnings.push(`replayed budget ${this.budget.toFixed(2)} differs from saved ${save.budgetLeft.toFixed(2)}: the world is not the one that was saved`);
     }

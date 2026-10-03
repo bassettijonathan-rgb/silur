@@ -17,7 +17,8 @@ See **[DESIGN.md](DESIGN.md)** for the model, architecture and milestone plan.
 | M4 Natural catastrophes + playable vertical slice (map → drill → core → assays) | done |
 | M5 Hidden civilization, mimicry, ideal-observer solvability gate | done |
 | M6 Full investigation UI: outcrops, dating, fossils, correlation, age models, notebook, save/load | done |
-| M7 Submission, scoring, reveal · M8 balancing and polish | planned |
+| M7 Submission, proper scoring, preservation audit, reveal, calibration history | done |
+| M8 Balancing with bot players, difficulty presets, polish | next |
 
 ## Commands
 

@@ -4,6 +4,9 @@
  */
 import type { WorldConfig } from './config';
 import type { ProxyId, ProxyInfo } from './proxies';
+import type { RevealPayload } from './reveal';
+import type { ScoreReport } from './scoring';
+import type { Submission } from './submission';
 
 export type Stage = 'planet' | 'earth' | 'biosphere' | 'strata' | 'catalog' | 'solvability';
 
@@ -120,12 +123,13 @@ export type Measurement = CoreResult | AssayResult | DateResult | FossilResult;
 export type ClientMessage =
   | { kind: 'generate'; config: WorldConfig }
   | { kind: 'act'; reqId: number; action: Action }
-  | { kind: 'submit'; reqId: number; submission: unknown };
+  | { kind: 'submit'; reqId: number; submission: Submission };
 
-export type ErrorCode = 'insufficient_budget' | 'unknown_core' | 'out_of_range' | 'bad_request' | 'not_ready' | 'sealed';
+export type ErrorCode = 'insufficient_budget' | 'unknown_core' | 'out_of_range' | 'bad_request' | 'not_ready' | 'already_submitted';
 
 export type ServerMessage =
   | { kind: 'progress'; stage: Stage; frac: number }
   | { kind: 'ready'; info: PublicInfo }
   | { kind: 'result'; reqId: number; measurement: Measurement }
+  | { kind: 'revealed'; reqId: number; score: ScoreReport; reveal: RevealPayload }
   | { kind: 'error'; reqId?: number; code: ErrorCode; message: string };

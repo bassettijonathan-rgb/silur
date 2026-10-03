@@ -7,6 +7,7 @@ import { MODEL_VERSION, WorldConfig } from '../shared/config';
 import { Action } from '../shared/protocol';
 import { Tie } from './correlation';
 import { Hypothesis } from './notebook';
+import { Submission } from '../shared/submission';
 
 export const SAVE_VERSION = 1;
 
@@ -18,6 +19,9 @@ export interface SaveFile {
   actions: Action[];
   ties: Tie[];
   notebook: { items: Hypothesis[]; nextId: number };
+  /** The submission draft, and whether it was handed in (replayed on load, which reproduces the reveal). */
+  draft?: Submission;
+  submitted?: boolean;
   /** Next tie id counter. */
   nextTie: number;
   /** Cost/budget at save time: a replay must end here, otherwise the save belongs to a different model. */
@@ -35,7 +39,7 @@ export function parseSave(text: string): { save: SaveFile; warnings: string[] } 
   return {
     save: {
       format: 'silur-save', version: d.version ?? SAVE_VERSION, config: d.config, actions: d.actions,
-      ties: d.ties ?? [], notebook: d.notebook ?? { items: [], nextId: 1 }, nextTie: d.nextTie ?? 1, budgetLeft: d.budgetLeft ?? NaN,
+      ties: d.ties ?? [], notebook: d.notebook ?? { items: [], nextId: 1 }, nextTie: d.nextTie ?? 1, budgetLeft: d.budgetLeft ?? NaN, draft: d.draft, submitted: d.submitted ?? false,
     },
     warnings,
   };

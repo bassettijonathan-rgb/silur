@@ -32,13 +32,13 @@ describe('worker host + client', () => {
     for (const m of log) expect(['progress', 'ready', 'result', 'error']).toContain(m.kind);
   });
 
-  it('refuses actions before a world exists, bad requests, overspending and the sealed reveal', async () => {
+  it('refuses actions before a world exists, bad requests, overspending and malformed submissions', async () => {
     const { client } = loopback();
     await expect(client.act({ kind: 'drill', cell: 0, depthM: 10 })).rejects.toMatchObject({ code: 'not_ready' });
     await client.generate({ ...config, difficulty: { ...config.difficulty, budget: 8 } });
     await expect(client.act({ kind: 'drill', cell: 9999, depthM: 10 })).rejects.toMatchObject({ code: 'out_of_range' });
     await expect(client.act({ kind: 'drill', cell: 10, depthM: 1000 })).rejects.toBeInstanceOf(ActionError);
-    await expect(client.submit({ events: [] })).rejects.toMatchObject({ code: 'sealed' });
+    await expect(client.submit({ events: [] } as never)).rejects.toMatchObject({ code: 'bad_request' });
   });
 
   it('the same seed gives the same map and the same core through the protocol', async () => {

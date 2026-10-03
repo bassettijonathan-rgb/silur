@@ -657,3 +657,35 @@ reloads the page and restores the identical budget, cores and notebook.
 - **Known limits:** (1) effort-1 fossil samples return dozens of forms in rich shelves — abundance/rarity needs tuning in M8; (2) the correlation tab
   uses one depth scale for all cores, so short sections are tiny; (3) nothing yet suggests ties automatically (deliberate); (4) fossil sampling at a depth
   uses the environment of the layer, so repeated samples within one bed are identical by design.
+
+### M7 — as built (deviations from the plan above, and why)
+
+**Measured:** 227 tests (28 new). A headless-Chromium run submits, shows the reveal, saves, reloads and restores the reveal by replay.
+
+- **Submission** (`shared/submission.ts`): a headline `P(civilization)` plus events `{type, 80 % interval, P(exists), cause probabilities}`. Ten claim types:
+  four *episodes* seen in the rocks (glaciation, OAE, hyperthermal, extinction pulse — their cause is the question) and six *causes* (LIP, impact, methane
+  release, supernova, aridification/uplift, civilization). Seven candidate causes (aridification is filed under "tectonic"). Sanitised on entry (clamped,
+  ordered, normalised, ≤ 60 events, unique ids).
+- **Scoring** (`shared/scoring.ts`, pure, in bits relative to a naive baseline):
+  - headline and per-event existence: floored (1 %) log score against 50 %, strictly proper; Brier reported beside it;
+  - cause of a matched episode: floored log score against uniform over the 7 causes (an unstated cause scores 0);
+  - age: `3·(1 − IS/2 Myr)` floored at −3, where IS is the Gneiting–Raftery interval score of the 80 % interval at the true midpoint — an affine function of a
+    proper score (the floor only bites for gross misses);
+  - misses: `−2 bits × weight`, where weight = significance × detectability-in-principle (below); an event nobody could be expected to find costs nothing.
+  - **Matching** is an optimal assignment (Hungarian algorithm) on type, with intervals overlapping within 0.1 Myr, minimising total distance of midpoints.
+  - The reveal also prints what an *empty answer* would have scored, so totals can be read against doing nothing.
+  - **Propriety is tested numerically**: the expected score is maximised by honest belief for the binary rule, the categorical rule and (against simulated outcomes) the
+    interval score; a calibrated whole submission beats an overconfident one in expectation.
+- **Preservation audit** (`observation/reveal.ts`): per catalog event — cells that were depositing during it (`envHistory`), cells whose present rock still contains
+  that age (layer mean ± spread), rock eroded later (each erosion episode's thickness apportioned by age overlap). `detectability = min(1, preserved cells / 4 % of the map)`;
+  significance is a fixed function of type and size (a 1-km impact is 0, a 10-km one 1). An event with no surviving rock has weight 0, so erosion never makes the
+  player pay for a miss.
+- **Reveal** (`shared/reveal.ts`): all catalog events with parents, causes, parameters and audit; the civilization's parameters; downsampled curves (δ13C, temperature,
+  ice, anoxia, O2, extinction, diversity); erased rock by age; the ideal observer's headline probability, bits and per-event posteriors (and whether the world was left murky).
+- **Sealing:** `submit` is the only message that returns truth. Before it, no reply carries anything but measurements (tested on the message log); after it,
+  further `act`s and further `submit`s are refused (`already_submitted`). The old `sealed` error code is gone.
+- **Save/load:** the save now includes the draft and a `submitted` flag; restoring a submitted game replays the actions and then resubmits, reproducing the identical reveal.
+- **UI:** a Submit tab (draft editing, interval and probability sliders, per-episode cause table, confirm dialog) and a Reveal tab (score table, truth-vs-claims
+  timeline with the curves, event/audit table, erased-rock histogram, reliability diagram for this game and for the last 50 games in `localStorage`).
+- **Known limits:** (1) the miss penalty dominates a naive answer's score (a 100-Myr dev world has ≈ 20 scorable events); M8 retunes `MISS_BITS`; (2) the
+  ideal observer only assesses forced events, so the cause-bit comparison in the reveal is limited to the headline; (3) `significance` is hand-set.
